@@ -431,6 +431,7 @@ export default function ClientePainel() {
         </div>
       )}
 
+      {/* REVISADO: Sem comparação redundante com "sucesso" */}
       {totalItensSelecionados > 0 && (
         <div className="fixed bottom-6 left-4 right-4 z-40 max-w-xl mx-auto">
           <div className="bg-zinc-950/95 backdrop-blur-md border border-zinc-800 rounded-2xl p-4 flex items-center justify-between shadow-2xl">
