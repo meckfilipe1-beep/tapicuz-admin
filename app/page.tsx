@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { db } from "@/lib/firebase"
-// 1. NOVOS IMPORTS DO FIRESTORE JUNTO COM OS OUTROS
-import { collection, addDoc, doc, onSnapshot } from "firebase/firestore"
+import { collection, doc, onSnapshot, addDoc } from "firebase/firestore"
+import Image from "next/image"
 
 const PRECOS_PRODUTOS: { [key: string]: number } = {
   tapiocaMolhada: 8.00,
@@ -11,304 +11,458 @@ const PRECOS_PRODUTOS: { [key: string]: number } = {
   tapiocaQueijo: 8.00,
   cuscuzMilho: 5.00,
   cuscuzArroz: 6.00,
+  cuscuzMilhoArroz: 6.00, // Novo sabor adicionado
   cafe: 4.00
 }
 
+const DETALHES_PRODUTOS: { [key: string]: { nome: string; icone: string } } = {
+  tapiocaMolhada: { nome: "Tapioca Molhada", icone: "🥥" },
+  tapiocaManteiga: { nome: "Tapioca com Manteiga", icone: "🧈" },
+  tapiocaQueijo: { nome: "Tapioca com Queijo", icone: "🧀" },
+  cuscuzMilho: { nome: "Cuscuz de Milho", icone: "🌽" },
+  cuscuzArroz: { nome: "Cuscuz de Arroz", icone: "🍚" },
+  cuscuzMilhoArroz: { nome: "Cuscuz Milho e Arroz (Misto)", icone: "🎛️" }, // Novo sabor adicionado
+  cafe: { nome: "Café Quentinho", icone: "☕" }
+}
+
 const OPCOES_HORARIOS = [
-  "05:30", "06:00", "06:30", "07:00", "07:30", "08:00", 
-  "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", 
-  "11:30", "12:00", "12:30", "13:00", "13:30", "14:00", 
-  "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", 
-  "17:30", "18:00", "18:30", "19:00", "19:30", "20:00", 
-  "20:30", "21:00", "21:30", "22:00", "22:30", "23:00", 
-  "23:30"
+  "05:30", "06:00", "06:30", "07:00", "07:30", "08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00",
+  "11:30", "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30", "18:00"
 ]
 
-export default function Home() {
-  // 2. NOVO STATE DA LOJA PERTO DOS OUTROS USESTATE
+export default function ClientePainel() {
   const [lojaAberta, setLojaAberta] = useState<boolean>(true)
+  const [carregandoLoja, setCarregandoLoja] = useState(true)
+  const [enviandoPedido, setEnviandoPedido] = useState(false)
+  const [etapa, setEtapa] = useState<"menu" | "checkout" | "sucesso">("menu")
 
   const [nome, setNome] = useState("")
   const [endereco, setEndereco] = useState("")
+  const [numeroCasa, setNumeroCasa] = useState("")
+  const [referencia, setReferencia] = useState("")
   const [pagamento, setPagamento] = useState<"Pix" | "Dinheiro">("Pix")
   const [trocoPara, setTrocoPara] = useState("")
   const [horario, setHorario] = useState("07:00")
-  const [listaHorariosAberta, setListaHorariosAberta] = useState(false)
-  
-  const [itens, setItens] = useState({
+
+  const [itens, setItens] = useState<{ [key: string]: number }>({
     tapiocaMolhada: 0,
     tapiocaManteiga: 0,
     tapiocaQueijo: 0,
     cuscuzMilho: 0,
     cuscuzArroz: 0,
+    cuscuzMilhoArroz: 0, // Inicializado no estado
     cafe: 0,
   })
 
-  const [pedidoEnviado, setPedidoEnviado] = useState(false)
-  const [carregando, setCarregando] = useState(false)
-
-  // 3. LER O FIREBASE EM TEMPO REAL (FECHAMENTO AUTOMÁTICO)
   useEffect(() => {
-    const unsubscribe = onSnapshot(
-      doc(db, "configuracoes", "loja"),
-      (snapshot) => {
-        if (snapshot.exists()) {
-          setLojaAberta(snapshot.data().aberta)
-        }
-      }
-    )
+    if (typeof window !== "undefined") {
+      setNome(localStorage.getItem("tapicuz_nome") || "")
+      setEndereco(localStorage.getItem("tapicuz_endereco") || "")
+      setNumeroCasa(localStorage.getItem("tapicuz_numero") || "")
+      setReferencia(localStorage.getItem("tapicuz_referencia") || "")
+    }
 
+    const refLoja = doc(db, "configuracoes", "loja")
+    const unsubscribe = onSnapshot(refLoja, (snap) => {
+      if (snap.exists()) {
+        setLojaAberta(snap.data().aberta)
+      }
+      setCarregandoLoja(false)
+    })
     return () => unsubscribe()
   }, [])
 
-  function alterarQuantidade(produto: string, valor: number) {
+  function alterarQtd(chave: string, valor: number) {
     setItens(prev => ({
       ...prev,
-      [produto]: Math.max(0, (prev as any)[produto] + valor)
+      [chave]: Math.max(0, prev[chave] + valor)
     }))
   }
 
-  function calcularTotalECombos() {
-    let subtotal = 0
-    let qtdComidas = 0
-    let qtdCafes = itens.cafe
+  const totalItensSelecionados = Object.values(itens).reduce((a, b) => a + b, 0)
+  
+  let subtotal = 0
+  let qtdComidas = 0
+  let qtdCafes = itens.cafe
 
-    Object.entries(itens).forEach(([key, value]) => {
-      subtotal += PRECOS_PRODUTOS[key] * value
-      if (key !== "cafe") {
-        qtdComidas += value
+  Object.entries(itens).forEach(([key, qtd]) => {
+    subtotal += (PRECOS_PRODUTOS[key] || 0) * qtd
+    if (key !== "cafe") qtdComidas += qtd
+  })
+
+  let descuentoCombo = 0
+  if (qtdComidas > 0 && qtdCafes > 0) {
+    const totalCombosPossiveis = Math.min(qtdComidas, qtdCafes)
+    let cafesAplicados = 0
+
+    Object.entries(itens).forEach(([key, qtd]) => {
+      if (key !== "cafe" && qtd > 0) {
+        const comidasNoCombo = Math.min(qtd, totalCombosPossiveis - cafesAplicados)
+        if (comidasNoCombo > 0) {
+          const valorNormalPar = PRECOS_PRODUTOS[key] + PRECOS_PRODUTOS.cafe
+          const descontoPorPar = valorNormalPar - 10.00
+          descuentoCombo += descontoPorPar * comidasNoCombo
+          cafesAplicados += comidasNoCombo
+        }
       }
     })
-
-    let descontoTotal = 0
-    if (qtdComidas > 0 && qtdCafes > 0) {
-      const quantidadeCombos = Math.min(qtdComidas, qtdCafes)
-      let cafesAplicados = 0
-
-      Object.entries(itens).forEach(([key, value]) => {
-        if (key !== "cafe" && value > 0) {
-          const comidasDesteTipoNoCombo = Math.min(value, quantidadeCombos - cafesAplicados)
-          if (comidasDesteTipoNoCombo > 0) {
-            const precoNormalPar = PRECOS_PRODUTOS[key] + PRECOS_PRODUTOS.cafe
-            const descontoPorPar = precoNormalPar - 10.00
-            descontoTotal += descontoPorPar * comidasDesteTipoNoCombo
-            cafesAplicados += comidasDesteTipoNoCombo
-          }
-        }
-      })
-    }
-
-    return {
-      total: Math.max(0, subtotal - descontoTotal),
-      temCombo: descontoTotal > 0
-    }
   }
 
-  const { total: valorTotal, temCombo } = calcularTotalECombos()
-  const trocoParaNumerico = parseFloat(trocoPara.replace(",", ".")) || 0
-  const trocoCalculado = pagamento === "Dinheiro" && trocoParaNumerico > valorTotal ? trocoParaNumerico - valorTotal : 0
+  const valorTotalFinal = Math.max(0, subtotal - descuentoCombo)
+  const trocoParaNum = parseFloat(trocoPara.replace(",", ".")) || 0
+  const trocoCalculado = pagamento === "Dinheiro" && trocoParaNum > valorTotalFinal ? trocoParaNum - valorTotalFinal : 0
 
-  async function enviarPedido(e: any) {
+  async function finalizarPedidoCliente(e: any) {
     e.preventDefault()
-    if (!nome.trim() || valorTotal === 0 || carregando) return
+    if (!nome.trim() || valorTotalFinal === 0 || !lojaAberta || enviandoPedido) return
+    setEnviandoPedido(true)
 
-    setCarregando(true)
+    if (typeof window !== "undefined") {
+      localStorage.setItem("tapicuz_nome", nome.trim())
+      localStorage.setItem("tapicuz_endereco", endereco.trim())
+      localStorage.setItem("tapicuz_numero", numeroCasa.trim())
+      localStorage.setItem("tapicuz_referencia", referencia.trim())
+    }
 
-    const dadosPedido = {
+    const enderecoCompleto = endereco.trim() 
+      ? `${endereco.trim()}, Nº ${numeroCasa.trim()} ${referencia.trim() ? `- Ref: ${referencia.trim()}` : ""}`
+      : "Retirada no Balcão"
+
+    const payloadPedido = {
       nome: nome.trim(),
-      endereco: endereco.trim() || "Retirada no Balcão",
+      endereco: enderecoCompleto,
       pagamento,
-      troco: pagamento === "Dinheiro" ? trocoCalculado : 0,
-      valorTotal,
+      troco: trocoCalculado,
+      valorTotal: valorTotalFinal,
       horario,
-      pago: false,
+      pago: pagamento === "Pix",
       concluido: false,
       dataCriacao: new Date().toISOString(),
       itens
     }
 
     try {
-      await addDoc(collection(db, "pedidos"), dadosPedido)
-      setPedidoEnviado(true)
+      await addDoc(collection(db, "pedidos"), payloadPedido)
+      setItens({ tapiocaMolhada: 0, tapiocaManteiga: 0, tapiocaQueijo: 0, cuscuzMilho: 0, cuscuzArroz: 0, cuscuzMilhoArroz: 0, cafe: 0 })
+      setTrocoPara("")
+      setEtapa("sucesso")
     } catch (error) {
-      console.error("Erro ao enviar pedido:", error)
-      alert("Erro ao enviar o pedido, tente novamente!")
+      console.error(error)
+      alert("Houve um erro ao processar o envio. Tente novamente.")
     } finally {
-      setCarregando(false)
+      setEnviandoPedido(false)
     }
   }
 
-  // 4. TRAVA VISUAL CASO A LOJA ESTEJA FECHADA (LOGO NO COMEÇO DO RETURN)
-  if (!lojaAberta) {
+  if (carregandoLoja) {
     return (
-      <main className="min-h-screen bg-zinc-950 flex items-center justify-center p-6">
-        <div className="max-w-md w-full bg-zinc-900 border border-zinc-800 rounded-3xl p-8 text-center shadow-2xl">
-          <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-500 mb-3">
-            TAPICUZ DA SUL ☀️
-          </h1>
-
-          <p className="text-xl font-bold text-white mb-2">
-            Estamos Fechados
-          </p>
-
-          <p className="text-zinc-400 text-sm">
-            Não estamos recebendo pedidos no momento.
-            Volte mais tarde.
-          </p>
-        </div>
-      </main>
+      <div className="min-h-screen bg-zinc-900 flex items-center justify-center text-zinc-500 text-xs tracking-widest font-bold animate-pulse">
+        CARREGANDO CARDÁPIO...
+      </div>
     )
   }
 
-  if (pedidoEnviado) {
+  if (!lojaAberta) {
     return (
-      <main className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-zinc-900 border border-zinc-800 rounded-3xl p-8 text-center space-y-4 shadow-xl">
-          <div className="w-16 h-16 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center text-2xl mx-auto font-black">✓</div>
-          <h1 className="text-xl font-black text-white uppercase tracking-tight">Pedido Enviado!</h1>
-          <p className="text-xs text-zinc-400 leading-relaxed">Seu pedido já foi encaminhado para a nossa cozinha. Prepare-se para saborear o melhor Tapicuz! ☕</p>
-          <div className="pt-2 bg-zinc-950/40 border border-zinc-800/60 p-4 rounded-2xl text-left space-y-1">
-            <p className="text-[10px] uppercase font-bold text-zinc-500">Horário Agendado</p>
-            <p className="text-sm font-black text-orange-400">⏱️ {horario}</p>
-          </div>
-          <button onClick={() => window.location.reload()} className="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-black uppercase tracking-wider py-3.5 rounded-2xl transition-all">Fazer Novo Pedido</button>
+      <div className="min-h-screen bg-zinc-900 flex flex-col items-center justify-center px-4 text-center">
+        <div className="text-center mb-8 select-none">
+          <h1 className="text-3xl font-black text-orange-500 tracking-widest uppercase">TAPICUZ</h1>
+          <p className="text-xs font-bold text-amber-500/80 tracking-widest uppercase mt-0.5">Cardápio</p>
         </div>
-      </main>
+        <div className="max-w-md w-full bg-zinc-950 border border-zinc-800 p-8 rounded-3xl shadow-2xl space-y-4">
+          <div className="text-4xl animate-pulse">🌙</div>
+          <h2 className="text-lg font-black uppercase text-orange-500 tracking-wider">
+            Ficamos felizes com sua visita!
+          </h2>
+          <p className="text-xs text-zinc-400 leading-relaxed">
+            No momento nosso painel de pedidos está descansando. Volte em breve para saborear o melhor café da manhã do Nordeste!
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  if (etapa === "sucesso") {
+    return (
+      <div className="min-h-screen bg-zinc-900 flex flex-col items-center justify-center px-4 text-center">
+        <div className="max-w-md w-full bg-emerald-950/40 border border-emerald-500/30 rounded-3xl p-8 shadow-2xl space-y-6">
+          <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center text-3xl mx-auto shadow-inner">
+            ✓
+          </div>
+          <h2 className="text-xl font-black text-emerald-400 tracking-wider uppercase">
+            PEDIDO REALIZADO COM SUCESSO!
+          </h2>
+          <button 
+            onClick={() => setEtapa("menu")}
+            className="w-full py-3.5 bg-emerald-600 text-white font-black text-xs uppercase tracking-widest rounded-xl shadow-lg shadow-emerald-600/20 active:scale-95 transition-all"
+          >
+            Fazer outro pedido
+          </button>
+        </div>
+      </div>
     )
   }
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-zinc-100 p-4 sm:p-8">
-      <div className="max-w-md mx-auto space-y-6">
-        
-        {/* CABEÇALHO */}
-        <div className="text-center py-4">
-          <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-500 tracking-tight">
-            TAPICUZ DA SUL ☀️
-          </h1>
-          <p className="text-zinc-400 text-xs mt-1 font-medium">Faça seu pedido de forma rápida e agendada</p>
+    <main className="min-h-screen bg-zinc-900 text-zinc-200 pb-32 font-sans antialiased selection:bg-orange-500/20">
+      
+      <header className="sticky top-0 z-40 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800/60 px-4 py-4 shadow-md">
+        <div className="max-w-2xl mx-auto flex items-center justify-center relative">
+          <div className="text-center select-none">
+            <h1 className="text-2xl font-black text-orange-500 tracking-widest uppercase">TAPICUZ</h1>
+            <p className="text-xs font-bold text-amber-500/80 tracking-[0.2em] uppercase mt-0.5">Cardápio</p>
+          </div>
+          <div className="absolute right-0 px-2.5 py-1 rounded-full border text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5 bg-emerald-500/10 border-emerald-500/20 text-emerald-400 shadow-sm">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+            Aberto
+          </div>
         </div>
+      </header>
 
-        {/* PRODUTOS */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 space-y-4 shadow-xl">
-          <h2 className="text-xs font-black text-orange-400 uppercase tracking-widest border-b border-zinc-800 pb-2">Cardápio do Dia</h2>
-          
-          <div className="space-y-3">
-            {[
-              { id: "tapiocaMolhada", nome: "Tapioca Molhada", preco: 8.00 },
-              { id: "tapiocaManteiga", nome: "Tapioca com Manteiga", preco: 6.00 },
-              { id: "tapiocaQueijo", nome: "Tapioca com Queijo", preco: 8.00 },
-              { id: "cuscuzMilho", nome: "Cuscuz de Milho ", preco: 5.00 },
-              { id: "cuscuzArroz", nome: "Cuscuz de Arroz", preco: 6.00 },
-              { id: "cafe", nome: "Café com Leite", preco: 4.00 },
-            ].map((prod) => (
-              <div key={prod.id} className="flex items-center justify-between bg-zinc-950 p-3 rounded-2xl border border-zinc-800/60 transition-all hover:border-zinc-700">
-                <div>
-                  <h3 className="font-bold text-zinc-200 text-xs">{prod.nome}</h3>
-                  <p className="text-emerald-400 text-xs font-black mt-0.5">R$ {prod.preco.toFixed(2)}</p>
-                </div>
-                
-                <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 p-1 rounded-xl">
-                  <button type="button" onClick={() => alterarQuantidade(prod.id, -1)} className="w-7 h-7 bg-zinc-950 rounded-lg text-zinc-400 font-bold text-sm active:scale-90 select-none transition-all">-</button>
-                  <span className="font-black text-xs text-white w-5 text-center">{(itens as any)[prod.id]}</span>
-                  <button type="button" onClick={() => alterarQuantidade(prod.id, 1)} className="w-7 h-7 bg-zinc-950 rounded-lg text-zinc-400 font-bold text-sm active:scale-90 select-none transition-all">+</button>
-                </div>
-              </div>
-            ))}
+      {etapa === "menu" && (
+        <div className="max-w-2xl mx-auto px-4 mt-6 space-y-4">
+          <div className="bg-orange-950/30 border border-orange-500/20 rounded-2xl p-4 flex items-center gap-3">
+            <span className="text-lg">🔥</span>
+            <div className="text-xs">
+              <h4 className="font-black text-orange-400 uppercase tracking-wide">Combo Ativo!</h4>
+              <p className="text-zinc-400 font-medium">Monte qualquer par de <strong>Comida + Café</strong> por apenas <strong className="text-emerald-400 font-bold">R$ 10,00</strong>.</p>
+            </div>
           </div>
 
-          {temCombo && (
-            <div className="bg-orange-500/10 border border-orange-500/20 text-orange-400 p-3 rounded-2xl text-center font-bold text-[11px] uppercase tracking-wide animate-pulse">
-              🎉 Combo Ativado: 1 Comida + 1 Café por apenas R$ 10,00!
-            </div>
-          )}
-        </div>
+          <div className="grid grid-cols-1 gap-2">
+            {Object.keys(DETALHES_PRODUTOS).map((chave) => {
+              const produto = DETALHES_PRODUTOS[chave]
+              const preco = PRECOS_PRODUTOS[chave]
+              const quantidade = itens[chave] || 0
 
-        {/* FORMULÁRIO DE ENVIO */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 space-y-4 shadow-xl">
-          <h2 className="text-xs font-black text-orange-400 uppercase tracking-widest border-b border-zinc-800 pb-2">Detalhes da Entrega</h2>
-          
-          <form onSubmit={enviarPedido} className="space-y-4">
-            <div>
-              <label className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Seu Nome completo</label>
-              <input type="text" required placeholder="Digite seu nome" value={nome} onChange={(e) => setNome(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 focus:border-orange-500 rounded-xl p-3 text-xs text-white outline-none transition-all placeholder:text-zinc-600" />
-            </div>
-
-            <div>
-              <label className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Endereço de Entrega (Opcional)</label>
-              <input type="text" placeholder="Deixe em branco para Retirada no Balcão" value={endereco} onChange={(e) => setEndereco(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 focus:border-orange-500 rounded-xl p-3 text-xs text-white outline-none transition-all placeholder:text-zinc-600" />
-            </div>
-
-            {/* HORÁRIO AGENDADO COM DROPDOWN EM GRID */}
-            <div className="relative">
-              <label className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Horário de Retirada / Entrega</label>
-              <button
-                type="button"
-                onClick={() => setListaHorariosAberta(!listaHorariosAberta)}
-                className="w-full bg-zinc-950 border border-zinc-800 focus:border-orange-500 rounded-xl p-3 text-xs text-white outline-none text-left flex justify-between items-center transition-all"
-              >
-                <span className="font-bold text-zinc-200">⏱️ {horario}</span>
-                <span className="text-[10px] bg-zinc-900 px-2 py-1 rounded-md text-zinc-400 font-bold">{listaHorariosAberta ? "Fechar" : "Alterar"}</span>
-              </button>
-
-              {listaHorariosAberta && (
-                <div className="absolute left-0 right-0 mt-2 bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl z-50 p-2 max-h-56 overflow-y-auto">
-                  <div className="grid grid-cols-4 gap-1">
-                    {OPCOES_HORARIOS.map((hora) => (
-                      <button
-                        key={hora}
-                        type="button"
-                        onClick={() => {
-                          setHorario(hora)
-                          setListaHorariosAberta(false)
-                        }}
-                        className={`p-2 rounded-lg text-[11px] font-bold transition-all text-center ${horario === hora ? "bg-orange-500 text-white" : "hover:bg-zinc-950 text-zinc-400 hover:text-zinc-200"}`}
-                      >
-                        {hora}
-                      </button>
-                    ))}
+              return (
+                <div 
+                  key={chave} 
+                  className={`border rounded-3xl p-5 flex items-center justify-between gap-4 transition-all bg-zinc-950 ${quantidade > 0 ? "border-orange-500/50 bg-orange-950/10 shadow-lg" : "border-zinc-800/80"}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-24 h-24 relative rounded-xl overflow-hidden">
+                      <Image
+                        src={`/produtos/${chave === "tapiocaMolhada"
+                          ? "tapioca_molhada.png"
+                          : chave === "tapiocaManteiga"
+                          ? "tapioca_manteiga.png"
+                          : chave === "tapiocaQueijo"
+                          ? "tapioca_queijo.png"
+                          : chave === "cuscuzMilho"
+                          ? "cuscuz_milho.png"
+                          : chave === "cuscuzArroz"
+                          ? "cuscuz_arroz.png"
+                          : chave === "cuscuzMilhoArroz"
+                          ? "cuscuz_milho_arroz.png"
+                          : "cafe_leite.png"
+                        }`}
+                        alt={produto.nome}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-zinc-100 text-lg tracking-wide uppercase">{produto.nome}</h3>
+                      <span className="text-emerald-400 font-black text-base block mt-0.5">R$ {preco.toFixed(2)}</span>
+                    </div>
                   </div>
+
+                  <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-xl p-1 gap-1">
+                    {quantidade > 0 && (
+                      <>
+                        <button 
+                          type="button" 
+                          onClick={() => alterarQtd(chave, -1)} 
+                          className="w-12 h-12 rounded-lg bg-zinc-950 text-zinc-400 hover:text-zinc-200 shadow-sm active:scale-90 font-black text-sm transition-all"
+                        >
+                          -
+                        </button>
+                        <span className="font-black text-zinc-200 text-lg w-8 text-center">{quantidade}</span>
+                      </>
+                    )}
+                    <button 
+                      type="button" 
+                      onClick={() => alterarQtd(chave, 1)} 
+                      className={`h-12 rounded-lg font-black text-xs transition-all active:scale-95 flex items-center justify-center ${quantidade > 0 ? "w-12 bg-orange-500 text-white font-black text-sm" : "px-4 bg-zinc-950 text-zinc-300 border border-zinc-800 hover:bg-zinc-900"}`}
+                    >
+                      {quantidade > 0 ? "+" : "Adicionar"}
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {etapa === "checkout" && (
+        <div className="max-w-md mx-auto px-4 mt-6 space-y-6">
+          <div className="flex items-center gap-2 border-b border-zinc-800 pb-3">
+            <button type="button" onClick={() => setEtapa("menu")} className="text-zinc-400 hover:text-zinc-200 font-bold text-xs bg-zinc-950 border border-zinc-800 px-3 py-1.5 rounded-xl shadow-sm">← Voltar</button>
+            <h2 className="text-xs font-black uppercase text-orange-500 tracking-wider ml-auto">Finalizar Pedido</h2>
+          </div>
+
+          <form onSubmit={finalizarPedidoCliente} className="space-y-4 text-xs">
+            <div className="bg-zinc-950 border border-zinc-800/80 p-5 rounded-2xl space-y-4 shadow-md">
+              <div>
+                <label className="text-[10px] font-black text-zinc-500 uppercase block mb-1">Seu Nome *</label>
+                <input 
+                  type="text" 
+                  required 
+                  placeholder="Ex: Maria Souza" 
+                  value={nome} 
+                  onChange={(e) => setNome(e.target.value)} 
+                  className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-xl p-3 text-zinc-100 outline-none font-medium transition-all" 
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <div className="col-span-2">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase block mb-1">Endereço de Entrega</label>
+                  <input 
+                    type="text" 
+                    placeholder="Ex: Rua das Flores" 
+                    value={endereco} 
+                    onChange={(e) => setEndereco(e.target.value)} 
+                    className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-xl p-3 text-zinc-100 outline-none font-medium transition-all" 
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-zinc-500 uppercase block mb-1">Número</label>
+                  <input 
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="123" 
+                    value={numeroCasa} 
+                    onChange={(e) => setNumeroCasa(e.target.value)} 
+                    className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-xl p-3 text-zinc-100 outline-none font-bold text-center transition-all" 
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black text-zinc-500 uppercase block mb-1">Ponto de Referência</label>
+                <input 
+                  type="text" 
+                  placeholder="Ex: Próximo ao mercado" 
+                  value={referencia} 
+                  onChange={(e) => setReferencia(e.target.value)} 
+                  className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-xl p-3 text-zinc-100 outline-none font-medium transition-all" 
+                />
+              </div>
+
+              <div>
+                <label className="text-lg font-black text-orange-500 block mb-3 text-center">Selecione o Horário para entrega: às {horario}</label>
+                <div className="grid grid-cols-4 gap-1.5 max-h-36 overflow-y-auto p-1.5 bg-zinc-900 border border-zinc-800 rounded-xl">
+                  {OPCOES_HORARIOS.map((hora) => (
+                    <button
+                      key={hora}
+                      type="button"
+                      onClick={() => setHorario(hora)}
+                      className={`py-2 text-center rounded-lg font-bold text-xs transition-all ${horario === hora ? "bg-orange-500 text-white font-black shadow-md" : "bg-zinc-950 text-zinc-400 border border-zinc-800 hover:bg-zinc-800 hover:text-zinc-200"}`}
+                    >
+                      {hora}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-zinc-950 border border-zinc-800/80 p-5 rounded-2xl space-y-4 shadow-md">
+              <div>
+                <label className="text-[10px] font-black text-zinc-500 uppercase block mb-1">Forma de Pagamento</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button 
+                    type="button" 
+                    onClick={() => setPagamento("Pix")}
+                    className={`p-3 rounded-xl border font-black text-center uppercase tracking-wider transition-all ${pagamento === "Pix" ? "bg-teal-500/10 border-teal-500 text-teal-400" : "bg-zinc-900 border-zinc-800 text-zinc-500"}`}
+                  >
+                    📲 Pix
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => setPagamento("Dinheiro")}
+                    className={`p-3 rounded-xl border font-black text-center uppercase tracking-wider transition-all ${pagamento === "Dinheiro" ? "bg-orange-500/10 border-orange-500 text-orange-400" : "bg-zinc-900 border-zinc-800 text-zinc-500"}`}
+                  >
+                    💵 Dinheiro
+                  </button>
+                </div>
+              </div>
+
+              {pagamento === "Dinheiro" && (
+                <div className="space-y-1.5 pt-1">
+                  <label className="text-[10px] font-black text-orange-400 uppercase block">Precisa de troco para quanto?</label>
+                  <input 
+                    type="number"
+                    inputMode="decimal"
+                    placeholder="50" 
+                    value={trocoPara} 
+                    onChange={(e) => setTrocoPara(e.target.value)} 
+                    className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-400 rounded-xl p-3 text-zinc-100 outline-none font-bold transition-all" 
+                  />
+                  {trocoCalculado > 0 && (
+                    <p className="text-[11px] text-emerald-400 font-bold">Seu troco será de: R$ {trocoCalculado.toFixed(2)}</p>
+                  )}
                 </div>
               )}
             </div>
 
-            <div>
-              <label className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Forma de Pagamento</label>
-              <select value={pagamento} onChange={(e) => setPagamento(e.target.value as any)} className="w-full bg-zinc-950 border border-zinc-800 focus:border-orange-500 rounded-xl p-3 text-xs text-white outline-none transition-all">
-                <option value="Pix">Pix (Código Copia e Cola / QR Code)</option>
-                <option value="Dinheiro">Dinheiro (No ato da entrega)</option>
-              </select>
+            <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-2xl space-y-1.5">
+              <div className="flex justify-between text-zinc-400 font-medium"><span>Itens adicionados:</span><span>{totalItensSelecionados}x</span></div>
+              {descuentoCombo > 0 && (
+                <div className="flex justify-between text-emerald-400 font-bold"><span>Combo Desconto:</span><span>- R$ {descuentoCombo.toFixed(2)}</span></div>
+              )}
+              <div className="flex justify-between items-center text-zinc-100 font-black pt-1.5 border-t border-zinc-800">
+                <span>TOTAL A PAGAR:</span>
+                <span className="text-base text-emerald-400">R$ {valorTotalFinal.toFixed(2)}</span>
+              </div>
             </div>
 
-            {pagamento === "Dinheiro" && (
-              <div className="animate-fade-in">
-                <label className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Troco para quanto?</label>
-                <input type="text" placeholder="Ex: R$ 50,00" value={trocoPara} onChange={(e) => setTrocoPara(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 focus:border-orange-500 rounded-xl p-3 text-xs text-white outline-none transition-all placeholder:text-zinc-600" />
-                {trocoCalculado > 0 && (
-                  <p className="text-[11px] text-amber-400 mt-1.5 font-medium pl-1">Seu troco será de: <strong>R$ {trocoCalculado.toFixed(2)}</strong></p>
-                )}
-              </div>
-            )}
-
-            {/* RESUMO E ENVIO */}
-            <div className="pt-3 border-t border-zinc-800 flex items-center justify-between">
-              <div>
-                <span className="text-[9px] uppercase font-bold text-zinc-500 block tracking-wider">Total do Pedido</span>
-                <p className="text-2xl font-black text-emerald-400">R$ {valorTotal.toFixed(2)}</p>
-              </div>
-              
-              <button 
-                type="submit" 
-                disabled={valorTotal === 0 || carregando} 
-                className={`px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-wider transition-all active:scale-95 shadow-md ${valorTotal === 0 || carregando ? "bg-zinc-800 text-zinc-500 cursor-not-allowed" : "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-orange-500/10"}`}
-              >
-                {carregando ? "Enviando..." : "Enviar Pedido"}
-              </button>
-            </div>
+            <button 
+              type="submit" 
+              disabled={enviandoPedido || valorTotalFinal === 0}
+              className="w-full py-4 bg-orange-500 disabled:opacity-30 disabled:pointer-events-none text-white text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-md active:scale-95"
+            >
+              {enviandoPedido ? "Enviando..." : "Confirmar e Enviar Pedido ✓"}
+            </button>
           </form>
         </div>
+      )}
 
-      </div>
+      {totalItensSelecionados > 0 && etapa !== "sucesso" && (
+        <div className="fixed bottom-6 left-4 right-4 z-40 max-w-xl mx-auto">
+          <div className="bg-zinc-950/95 backdrop-blur-md border border-zinc-800 rounded-2xl p-4 flex items-center justify-between shadow-2xl">
+            <div>
+              <span className="bg-orange-500/20 text-orange-400 font-black text-[10px] px-2 py-0.5 rounded-md uppercase tracking-wider">
+                {totalItensSelecionados} {totalItensSelecionados === 1 ? "Item" : "Itens"}
+              </span>
+              <div className="flex items-baseline gap-1 mt-0.5">
+                <span className="text-lg font-black text-emerald-400 tracking-tight">R$ {valorTotalFinal.toFixed(2)}</span>
+              </div>
+            </div>
+
+            {etapa === "menu" ? (
+              <button 
+                type="button" 
+                onClick={() => setEtapa("checkout")}
+                className="bg-orange-500 text-white text-xs font-black uppercase tracking-widest px-6 py-3.5 rounded-xl shadow-md transition-all active:scale-95"
+              >
+                Avançar →
+              </button>
+            ) : (
+              <button 
+                type="button" 
+                onClick={() => setEtapa("menu")}
+                className="bg-zinc-900 text-zinc-300 text-xs font-black uppercase tracking-wide px-5 py-3.5 rounded-xl transition-all active:scale-95"
+              >
+                Cardápio
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
     </main>
   )
 }
