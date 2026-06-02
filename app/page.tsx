@@ -11,7 +11,7 @@ const PRECOS_PRODUTOS: { [key: string]: number } = {
   tapiocaQueijo: 8.00,
   cuscuzMilho: 5.00,
   cuscuzArroz: 6.00,
-  cuscuzMilhoArroz: 6.00, // Novo sabor adicionado
+  cuscuzMilhoArroz: 6.00,
   cafe: 4.00
 }
 
@@ -21,7 +21,7 @@ const DETALHES_PRODUTOS: { [key: string]: { nome: string; icone: string } } = {
   tapiocaQueijo: { nome: "Tapioca com Queijo", icone: "🧀" },
   cuscuzMilho: { nome: "Cuscuz de Milho", icone: "🌽" },
   cuscuzArroz: { nome: "Cuscuz de Arroz", icone: "🍚" },
-  cuscuzMilhoArroz: { nome: "Cuscuz Milho e Arroz (Misto)", icone: "🎛️" }, // Novo sabor adicionado
+  cuscuzMilhoArroz: { nome: "Cuscuz Milho e Arroz (Misto)", icone: "🎛️" },
   cafe: { nome: "Café Quentinho", icone: "☕" }
 }
 
@@ -50,7 +50,7 @@ export default function ClientePainel() {
     tapiocaQueijo: 0,
     cuscuzMilho: 0,
     cuscuzArroz: 0,
-    cuscuzMilhoArroz: 0, // Inicializado no estado
+    cuscuzMilhoArroz: 0,
     cafe: 0,
   })
 
@@ -306,61 +306,62 @@ export default function ClientePainel() {
           <form onSubmit={finalizarPedidoCliente} className="space-y-4 text-xs">
             <div className="bg-zinc-950 border border-zinc-800/80 p-5 rounded-2xl space-y-4 shadow-md">
               <div>
-                <label className="text-[10px] font-black text-zinc-500 uppercase block mb-1">Seu Nome *</label>
+                <label className="text-base font-black text-orange-400 uppercase block mb-2">Seu Nome *</label>
                 <input 
                   type="text" 
                   required 
                   placeholder="Ex: Maria Souza" 
                   value={nome} 
                   onChange={(e) => setNome(e.target.value)} 
-                  className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-xl p-3 text-zinc-100 outline-none font-medium transition-all" 
+                  className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-xl p-5 text-lg text-zinc-100 outline-none transition-all" 
                 />
               </div>
 
               <div className="grid grid-cols-3 gap-2">
                 <div className="col-span-2">
-                  <label className="text-[10px] font-black text-zinc-500 uppercase block mb-1">Endereço de Entrega</label>
+                  <label className="text-base font-black text-orange-400 uppercase block mb-2">Endereço de Entrega</label>
                   <input 
                     type="text" 
                     placeholder="Ex: Rua das Flores" 
                     value={endereco} 
                     onChange={(e) => setEndereco(e.target.value)} 
-                    className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-xl p-3 text-zinc-100 outline-none font-medium transition-all" 
+                    className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-xl p-5 text-lg text-zinc-100 outline-none transition-all" 
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-black text-zinc-500 uppercase block mb-1">Número</label>
+                  <label className="text-base font-black text-orange-400 uppercase block mb-2">Número</label>
                   <input 
                     type="number"
                     inputMode="numeric"
                     placeholder="123" 
                     value={numeroCasa} 
                     onChange={(e) => setNumeroCasa(e.target.value)} 
-                    className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-xl p-3 text-zinc-100 outline-none font-bold text-center transition-all" 
+                    className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-xl p-5 text-xl font-black text-center text-zinc-100 outline-none transition-all" 
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-[10px] font-black text-zinc-500 uppercase block mb-1">Ponto de Referência</label>
+                <label className="text-base font-black text-orange-400 uppercase block mb-2">Ponto de Referência</label>
                 <input 
                   type="text" 
                   placeholder="Ex: Próximo ao mercado" 
                   value={referencia} 
                   onChange={(e) => setReferencia(e.target.value)} 
-                  className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-xl p-3 text-zinc-100 outline-none font-medium transition-all" 
+                  className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-xl p-5 text-lg text-zinc-100 outline-none transition-all" 
                 />
               </div>
 
-              <div>
-                <label className="text-lg font-black text-orange-500 block mb-3 text-center">Selecione o Horário para entrega: às {horario}</label>
-                <div className="grid grid-cols-4 gap-1.5 max-h-36 overflow-y-auto p-1.5 bg-zinc-900 border border-zinc-800 rounded-xl">
+              <div className="text-center pt-2">
+                <label className="text-base font-black text-orange-400 uppercase block mb-1">🕒 Horário da Entrega</label>
+                <div className="text-3xl font-black text-orange-500 mb-3 select-none">{horario}</div>
+                <div className="grid grid-cols-4 gap-1.5 max-h-44 overflow-y-auto p-1.5 bg-zinc-900 border border-zinc-800 rounded-xl">
                   {OPCOES_HORARIOS.map((hora) => (
                     <button
                       key={hora}
                       type="button"
                       onClick={() => setHorario(hora)}
-                      className={`py-2 text-center rounded-lg font-bold text-xs transition-all ${horario === hora ? "bg-orange-500 text-white font-black shadow-md" : "bg-zinc-950 text-zinc-400 border border-zinc-800 hover:bg-zinc-800 hover:text-zinc-200"}`}
+                      className={`py-4 text-center rounded-lg font-bold text-base transition-all ${horario === hora ? "bg-orange-500 text-white font-black shadow-md" : "bg-zinc-950 text-zinc-400 border border-zinc-800 hover:bg-zinc-800 hover:text-zinc-200"}`}
                     >
                       {hora}
                     </button>
@@ -371,38 +372,38 @@ export default function ClientePainel() {
 
             <div className="bg-zinc-950 border border-zinc-800/80 p-5 rounded-2xl space-y-4 shadow-md">
               <div>
-                <label className="text-[10px] font-black text-zinc-500 uppercase block mb-1">Forma de Pagamento</label>
+                <label className="text-base font-black text-orange-400 uppercase block mb-2">Forma de Pagamento</label>
                 <div className="grid grid-cols-2 gap-2">
                   <button 
                     type="button" 
                     onClick={() => setPagamento("Pix")}
-                    className={`p-3 rounded-xl border font-black text-center uppercase tracking-wider transition-all ${pagamento === "Pix" ? "bg-teal-500/10 border-teal-500 text-teal-400" : "bg-zinc-900 border-zinc-800 text-zinc-500"}`}
+                    className={`p-5 rounded-xl border text-lg font-black text-center uppercase tracking-wider transition-all ${pagamento === "Pix" ? "bg-teal-500/10 border-teal-500 text-teal-400" : "bg-zinc-900 border-zinc-800 text-zinc-500"}`}
                   >
-                    📲 Pix
+                    📲 PIX
                   </button>
                   <button 
                     type="button" 
                     onClick={() => setPagamento("Dinheiro")}
-                    className={`p-3 rounded-xl border font-black text-center uppercase tracking-wider transition-all ${pagamento === "Dinheiro" ? "bg-orange-500/10 border-orange-500 text-orange-400" : "bg-zinc-900 border-zinc-800 text-zinc-500"}`}
+                    className={`p-5 rounded-xl border text-lg font-black text-center uppercase tracking-wider transition-all ${pagamento === "Dinheiro" ? "bg-orange-500/10 border-orange-500 text-orange-400" : "bg-zinc-900 border-zinc-800 text-zinc-500"}`}
                   >
-                    💵 Dinheiro
+                    💵 DINHEIRO
                   </button>
                 </div>
               </div>
 
               {pagamento === "Dinheiro" && (
                 <div className="space-y-1.5 pt-1">
-                  <label className="text-[10px] font-black text-orange-400 uppercase block">Precisa de troco para quanto?</label>
+                  <label className="text-base font-black text-orange-400 uppercase block mb-2">Precisa de troco para quanto?</label>
                   <input 
                     type="number"
                     inputMode="decimal"
                     placeholder="50" 
                     value={trocoPara} 
                     onChange={(e) => setTrocoPara(e.target.value)} 
-                    className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-400 rounded-xl p-3 text-zinc-100 outline-none font-bold transition-all" 
+                    className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-400 rounded-xl p-5 text-lg text-zinc-100 font-bold outline-none transition-all" 
                   />
                   {trocoCalculado > 0 && (
-                    <p className="text-[11px] text-emerald-400 font-bold">Seu troco será de: R$ {trocoCalculado.toFixed(2)}</p>
+                    <p className="text-sm text-emerald-400 font-bold pt-1">Seu troco será de: R$ {trocoCalculado.toFixed(2)}</p>
                   )}
                 </div>
               )}
@@ -422,15 +423,15 @@ export default function ClientePainel() {
             <button 
               type="submit" 
               disabled={enviandoPedido || valorTotalFinal === 0}
-              className="w-full py-4 bg-orange-500 disabled:opacity-30 disabled:pointer-events-none text-white text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-md active:scale-95"
+              className="w-full py-6 bg-orange-500 disabled:opacity-30 disabled:pointer-events-none text-white text-lg font-black uppercase tracking-widest rounded-xl transition-all shadow-md active:scale-95"
             >
-              {enviandoPedido ? "Enviando..." : "Confirmar e Enviar Pedido ✓"}
+              {enviandoPedido ? "Enviando..." : "🛒 FINALIZAR PEDIDO"}
             </button>
           </form>
         </div>
       )}
 
-      {totalItensSelecionados > 0 && etapa !== "sucesso" && (
+      {totalItensSelecionados > 0 && (
         <div className="fixed bottom-6 left-4 right-4 z-40 max-w-xl mx-auto">
           <div className="bg-zinc-950/95 backdrop-blur-md border border-zinc-800 rounded-2xl p-4 flex items-center justify-between shadow-2xl">
             <div>
