@@ -34,7 +34,7 @@ export default function ClientePainel() {
   const [lojaAberta, setLojaAberta] = useState<boolean>(true)
   const [carregandoLoja, setCarregandoLoja] = useState(true)
   const [enviandoPedido, setEnviandoPedido] = useState(false)
-  const [etapa, setEtapa] = useState<"menu" | "checkout" | "sucesso">("menu")
+  const [etapa, setEtapa] = useState<"menu" | "checkout" | "confirmacao" | "sucesso">("menu")
 
   const [nome, setNome] = useState("")
   const [endereco, setEndereco] = useState("")
@@ -42,7 +42,8 @@ export default function ClientePainel() {
   const [referencia, setReferencia] = useState("")
   const [pagamento, setPagamento] = useState<"Pix" | "Dinheiro">("Pix")
   const [trocoPara, setTrocoPara] = useState("")
-  const [horario, setHorario] = useState("07:00")
+  const [horario, setHorario] = useState("05:30")
+  const [mostrarListaHorarios, setMostrarListaHorarios] = useState(false)
 
   const [itens, setItens] = useState<{ [key: string]: number }>({
     tapiocaMolhada: 0,
@@ -112,9 +113,14 @@ export default function ClientePainel() {
   const trocoParaNum = parseFloat(trocoPara.replace(",", ".")) || 0
   const trocoCalculado = pagamento === "Dinheiro" && trocoParaNum > valorTotalFinal ? trocoParaNum - valorTotalFinal : 0
 
-  async function finalizarPedidoCliente(e: any) {
+  function irParaConferencia(e: any) {
     e.preventDefault()
-    if (!nome.trim() || valorTotalFinal === 0 || !lojaAberta || enviandoPedido) return
+    if (!nome.trim() || valorTotalFinal === 0 || !lojaAberta) return
+    setEtapa("confirmacao")
+  }
+
+  async function enviarPedidoFinal() {
+    if (enviandoPedido) return
     setEnviandoPedido(true)
 
     if (typeof window !== "undefined") {
@@ -143,8 +149,6 @@ export default function ClientePainel() {
 
     try {
       await addDoc(collection(db, "pedidos"), payloadPedido)
-      setItens({ tapiocaMolhada: 0, tapiocaManteiga: 0, tapiocaQueijo: 0, cuscuzMilho: 0, cuscuzArroz: 0, cuscuzMilhoArroz: 0, cafe: 0 })
-      setTrocoPara("")
       setEtapa("sucesso")
     } catch (error) {
       console.error(error)
@@ -152,6 +156,12 @@ export default function ClientePainel() {
     } finally {
       setEnviandoPedido(false)
     }
+  }
+
+  function reiniciarPainel() {
+    setItens({ tapiocaMolhada: 0, tapiocaManteiga: 0, tapiocaQueijo: 0, cuscuzMilho: 0, cuscuzArroz: 0, cuscuzMilhoArroz: 0, cafe: 0 })
+    setTrocoPara("")
+    setEtapa("menu")
   }
 
   if (carregandoLoja) {
@@ -190,10 +200,11 @@ export default function ClientePainel() {
             ✓
           </div>
           <h2 className="text-xl font-black text-emerald-400 tracking-wider uppercase">
-            PEDIDO REALIZADO COM SUCESSO!
+            PEDIDO ENVIADO COM SUCESSO!
           </h2>
+          <p className="text-xs text-zinc-400">Sua encomenda foi enviada para a produção.</p>
           <button 
-            onClick={() => setEtapa("menu")}
+            onClick={reiniciarPainel}
             className="w-full py-3.5 bg-emerald-600 text-white font-black text-xs uppercase tracking-widest rounded-xl shadow-lg shadow-emerald-600/20 active:scale-95 transition-all"
           >
             Fazer outro pedido
@@ -219,6 +230,22 @@ export default function ClientePainel() {
         </div>
       </header>
 
+      {/* CORREÇÃO DO BANNER: Agora com dimensões fixas nativas para evitar o bug de altura 0 */}
+      {(etapa === "menu" || etapa === "checkout") && (
+        <div className="max-w-2xl mx-auto w-full px-0 sm:px-4">
+          <div className="w-full overflow-hidden rounded-b-3xl shadow-lg border-b border-zinc-800/50 block">
+            <Image
+              src="/banner/banner-topo.png"
+              alt="Tapicuz Café da Manhã"
+              width={800}
+              height={220}
+              priority
+              className="w-full h-auto object-cover"
+            />
+          </div>
+        </div>
+      )}
+
       {etapa === "menu" && (
         <div className="max-w-2xl mx-auto px-4 mt-6 space-y-4">
           <div className="bg-orange-950/30 border border-orange-500/20 rounded-2xl p-4 flex items-center gap-3">
@@ -240,38 +267,35 @@ export default function ClientePainel() {
                   key={chave} 
                   className={`border rounded-3xl p-6 flex flex-col items-center gap-5 transition-all bg-zinc-950 ${quantidade > 0 ? "border-orange-500/50 bg-orange-950/10 shadow-lg" : "border-zinc-800/80"}`}
                 >
-                  {/* IMAGEM CENTRALIZADA NO TOPO */}
-<div className="w-full flex justify-center mb-3">
-  <Image
-    src={`/produtos/${
-      chave === "tapiocaMolhada"
-        ? "tapioca_molhada.png"
-        : chave === "tapiocaManteiga"
-        ? "tapioca_manteiga.png"
-        : chave === "tapiocaQueijo"
-        ? "tapioca_queijo.png"
-        : chave === "cuscuzMilho"
-        ? "cuscuz_milho.png"
-        : chave === "cuscuzArroz"
-        ? "cuscuz_arroz.png"
-        : chave === "cuscuzMilhoArroz"
-        ? "cuscuz_milho_arroz.png"
-        : "cafe_leite.png"
-    }`}
-    alt={produto.nome}
-    width={112} // Define o tamanho base para o Next.js
-    height={112}
-    className="w-28 h-28 object-cover aspect-square rounded-2xl border-2 border-zinc-800 shadow-md"
-  />
-</div>
+                  <div className="w-full flex justify-center mb-3">
+                    <Image
+                      src={`/produtos/${
+                        chave === "tapiocaMolhada"
+                          ? "tapioca_molhada.png"
+                          : chave === "tapiocaManteiga"
+                          ? "tapioca_manteiga.png"
+                          : chave === "tapiocaQueijo"
+                          ? "tapioca_queijo.png"
+                          : chave === "cuscuzMilho"
+                          ? "cuscuz_milho.png"
+                          : chave === "cuscuzArroz"
+                          ? "cuscuz_arroz.png"
+                          : chave === "cuscuzMilhoArroz"
+                          ? "cuscuz_milho_arroz.png"
+                          : "cafe_leite.png"
+                      }`}
+                      alt={produto.nome}
+                      width={112}
+                      height={112}
+                      className="w-28 h-28 object-cover aspect-square rounded-2xl border-2 border-zinc-800 shadow-md"
+                    />
+                  </div>
 
-                  {/* DESCRIÇÃO EMBAIXO CENTRALIZADA */}
                   <div className="text-center">
                     <h3 className="font-bold text-zinc-100 text-xl tracking-wide uppercase">{produto.nome}</h3>
                     <span className="text-emerald-400 font-black text-lg block mt-1">R$ {preco.toFixed(2)}</span>
                   </div>
 
-                  {/* BOTÕES DE QUANTIDADE CENTRALIZADOS */}
                   <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-2xl p-1.5 gap-2 w-full max-w-[200px] justify-center">
                     {quantidade > 0 && (
                       <>
@@ -300,143 +324,208 @@ export default function ClientePainel() {
         </div>
       )}
 
-      {/* RESTANTE DO CÓDIGO (Checkout e Carrinho Suspenso) CONTINUA IGUAL... */}
       {etapa === "checkout" && (
         <div className="max-w-md mx-auto px-4 mt-6 space-y-6">
           <div className="flex items-center gap-2 border-b border-zinc-800 pb-3">
             <button type="button" onClick={() => setEtapa("menu")} className="text-zinc-400 hover:text-zinc-200 font-bold text-xs bg-zinc-950 border border-zinc-800 px-3 py-1.5 rounded-xl shadow-sm">← Voltar</button>
-            <h2 className="text-xs font-black uppercase text-orange-500 tracking-wider ml-auto">Finalizar Pedido</h2>
+            <h2 className="text-xs font-black uppercase text-orange-500 tracking-wider ml-auto">Informações de Entrega</h2>
           </div>
 
-          <form onSubmit={finalizarPedidoCliente} className="space-y-3 text-[11px]">
-  <div className="bg-zinc-950 border border-zinc-800/80 p-4 rounded-2xl space-y-3 shadow-md">
-    <div>
-      <label className="text-xs font-black text-orange-400 uppercase block mb-1">Seu Nome *</label>
-      <input 
-        type="text" 
-        required 
-        placeholder="Ex: Maria Souza" 
-        value={nome} 
-        onChange={(e) => setNome(e.target.value)} 
-        className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-xl p-3.5 text-sm text-zinc-100 outline-none transition-all" 
-      />
-    </div>
+          <form onSubmit={irParaConferencia} className="space-y-3 text-[11px]">
+            <div className="bg-zinc-950 border border-zinc-800/80 p-4 rounded-2xl space-y-3 shadow-md">
+              <div>
+                <label className="text-xs font-black text-orange-400 uppercase block mb-1">Seu Nome *</label>
+                <input 
+                  type="text" 
+                  required 
+                  placeholder="Ex: Maria Souza" 
+                  value={nome} 
+                  onChange={(e) => setNome(e.target.value)} 
+                  className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-xl p-3.5 text-sm text-zinc-100 outline-none transition-all" 
+                />
+              </div>
 
-    <div className="grid grid-cols-3 gap-2">
-      <div className="col-span-2">
-        <label className="text-xs font-black text-orange-400 uppercase block mb-1">Endereço de Entrega</label>
-        <input 
-          type="text" 
-          placeholder="Ex: Rua das Flores" 
-          value={endereco} 
-          onChange={(e) => setEndereco(e.target.value)} 
-          className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-xl p-3.5 text-sm text-zinc-100 outline-none transition-all" 
-        />
-      </div>
-      <div>
-        <label className="text-xs font-black text-orange-400 uppercase block mb-1">Número</label>
-        <input 
-          type="number"
-          inputMode="numeric"
-          placeholder="123" 
-          value={numeroCasa} 
-          onChange={(e) => setNumeroCasa(e.target.value)} 
-          className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-xl p-3.5 text-sm font-black text-center text-zinc-100 outline-none transition-all" 
-        />
-      </div>
-    </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="col-span-2">
+                  <label className="text-xs font-black text-orange-400 uppercase block mb-1">Endereço de Entrega</label>
+                  <input 
+                    type="text" 
+                    placeholder="Ex: Rua das Flores" 
+                    value={endereco} 
+                    onChange={(e) => setEndereco(e.target.value)} 
+                    className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-xl p-3.5 text-sm text-zinc-100 outline-none transition-all" 
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-black text-orange-400 uppercase block mb-1">Número</label>
+                  <input 
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="123" 
+                    value={numeroCasa} 
+                    onChange={(e) => setNumeroCasa(e.target.value)} 
+                    className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-xl p-3.5 text-sm font-black text-center text-zinc-100 outline-none transition-all" 
+                  />
+                </div>
+              </div>
 
-    <div>
-      <label className="text-xs font-black text-orange-400 uppercase block mb-1">Ponto de Referência</label>
-      <input 
-        type="text" 
-        placeholder="Ex: Próximo ao mercado" 
-        value={referencia} 
-        onChange={(e) => setReferencia(e.target.value)} 
-        className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-xl p-3.5 text-sm text-zinc-100 outline-none transition-all" 
-      />
-    </div>
+              <div>
+                <label className="text-xs font-black text-orange-400 uppercase block mb-1">Ponto de Referência</label>
+                <input 
+                  type="text" 
+                  placeholder="Ex: Próximo ao mercado" 
+                  value={referencia} 
+                  onChange={(e) => setReferencia(e.target.value)} 
+                  className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-xl p-3.5 text-sm text-zinc-100 outline-none transition-all" 
+                />
+              </div>
 
-    <div className="text-center pt-1">
-      <label className="text-xs font-black text-orange-400 uppercase block mb-0.5">🕒 Horário da Entrega</label>
-      <div className="text-xl font-black text-orange-500 mb-2 select-none">{horario}</div>
-      <div className="grid grid-cols-4 gap-1 max-h-36 overflow-y-auto p-1 bg-zinc-900 border border-zinc-800 rounded-xl">
-        {OPCOES_HORARIOS.map((hora) => (
-          <button
-            key={hora}
-            type="button"
-            onClick={() => setHorario(hora)}
-            className={`py-2.5 text-center rounded-lg font-bold text-xs transition-all ${horario === hora ? "bg-orange-500 text-white font-black shadow-md" : "bg-zinc-950 text-zinc-400 border border-zinc-800 hover:bg-zinc-800 hover:text-zinc-200"}`}
-          >
-            {hora}
-          </button>
-        ))}
-      </div>
-    </div>
-  </div>
+              <div className="text-center pt-1 border-t border-zinc-800/50 mt-2">
+                <label className="text-[10px] font-black text-zinc-500 uppercase block mb-1.5">
+                  🕒 Escolha o horário da entrega
+                </label>
+                
+                <button
+                  type="button"
+                  onClick={() => setMostrarListaHorarios(!mostrarListaHorarios)}
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-xl py-3 px-4 flex items-center justify-center relative active:scale-95 transition-all"
+                >
+                  <span className="text-orange-500 font-black text-xl tracking-wide">{horario}</span>
+                  <span className="text-zinc-600 absolute right-4 text-xs">{mostrarListaHorarios ? "▲" : "▼"}</span>
+                </button>
 
-  <div className="bg-zinc-950 border border-zinc-800/80 p-4 rounded-2xl space-y-3 shadow-md">
-    <div>
-      <label className="text-xs font-black text-orange-400 uppercase block mb-1">Forma de Pagamento</label>
-      <div className="grid grid-cols-2 gap-2">
-        <button 
-          type="button" 
-          onClick={() => setPagamento("Pix")}
-          className={`p-3.5 rounded-xl border text-sm font-black text-center uppercase tracking-wider transition-all ${pagamento === "Pix" ? "bg-teal-500/10 border-teal-500 text-teal-400" : "bg-zinc-900 border-zinc-800 text-zinc-500"}`}
-        >
-          📲 PIX
-        </button>
-        <button 
-          type="button" 
-          onClick={() => setPagamento("Dinheiro")}
-          className={`p-3.5 rounded-xl border text-sm font-black text-center uppercase tracking-wider transition-all ${pagamento === "Dinheiro" ? "bg-orange-500/10 border-orange-500 text-orange-400" : "bg-zinc-900 border-zinc-800 text-zinc-500"}`}
-        >
-          💵 DINHEIRO
-        </button>
-      </div>
-    </div>
+                {mostrarListaHorarios && (
+                  <div className="mt-2 grid grid-cols-4 gap-1.5 max-h-40 overflow-y-auto p-2 bg-zinc-900 border border-orange-500/30 rounded-xl shadow-inner animate-in fade-in slide-in-from-top-2 duration-300">
+                    {OPCOES_HORARIOS.map((hora) => (
+                      <button
+                        key={hora}
+                        type="button"
+                        onClick={() => {
+                          setHorario(hora)
+                          setMostrarListaHorarios(false)
+                        }}
+                        className={`py-3 text-center rounded-lg font-bold text-xs transition-all ${
+                          horario === hora 
+                            ? "bg-orange-500 text-white font-black shadow-lg" 
+                            : "bg-zinc-950 text-zinc-400 border border-zinc-800"
+                        }`}
+                      >
+                        {hora}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
 
-    {pagamento === "Dinheiro" && (
-      <div className="space-y-1 pt-0.5">
-        <label className="text-xs font-black text-orange-400 uppercase block mb-1">Precisa de troco para quanto?</label>
-        <input 
-          type="number"
-          inputMode="decimal"
-          placeholder="50" 
-          value={trocoPara} 
-          onChange={(e) => setTrocoPara(e.target.value)} 
-          className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-400 rounded-xl p-3.5 text-sm text-zinc-100 font-bold outline-none transition-all" 
-        />
-        {trocoCalculado > 0 && (
-          <p className="text-xs text-emerald-400 font-bold pt-0.5">Seu troco será de: R$ {trocoCalculado.toFixed(2)}</p>
-        )}
-      </div>
-    )}
-  </div>
+            <div className="bg-zinc-950 border border-zinc-800/80 p-4 rounded-2xl space-y-3 shadow-md">
+              <div>
+                <label className="text-xs font-black text-orange-400 uppercase block mb-1">Forma de Pagamento</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button 
+                    type="button" 
+                    onClick={() => setPagamento("Pix")}
+                    className={`p-3.5 rounded-xl border text-sm font-black text-center uppercase tracking-wider transition-all ${pagamento === "Pix" ? "bg-teal-500/10 border-teal-500 text-teal-400" : "bg-zinc-900 border-zinc-800 text-zinc-500"}`}
+                  >
+                    📲 PIX
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => setPagamento("Dinheiro")}
+                    className={`p-3.5 rounded-xl border text-sm font-black text-center uppercase tracking-wider transition-all ${pagamento === "Dinheiro" ? "bg-orange-500/10 border-orange-500 text-orange-400" : "bg-zinc-900 border-zinc-800 text-zinc-500"}`}
+                  >
+                    💵 DINHEIRO
+                  </button>
+                </div>
+              </div>
 
-  <div className="bg-zinc-950 border border-zinc-800 p-3.5 rounded-2xl space-y-1">
-    <div className="flex justify-between text-zinc-400 font-medium"><span>Itens adicionados:</span><span>{totalItensSelecionados}x</span></div>
-    {descuentoCombo > 0 && (
-      <div className="flex justify-between text-emerald-400 font-bold"><span>Combo Desconto:</span><span>- R$ {descuentoCombo.toFixed(2)}</span></div>
-    )}
-    <div className="flex justify-between items-center text-zinc-100 font-black pt-1 border-t border-zinc-800">
-      <span>TOTAL A PAGAR:</span>
-      <span className="text-sm text-emerald-400">R$ {valorTotalFinal.toFixed(2)}</span>
-    </div>
-  </div>
+              {pagamento === "Dinheiro" && (
+                <div className="space-y-1 pt-0.5">
+                  <label className="text-xs font-black text-orange-400 uppercase block mb-1">Precisa de troco para quanto?</label>
+                  <input 
+                    type="number"
+                    inputMode="decimal"
+                    placeholder="50" 
+                    value={trocoPara} 
+                    onChange={(e) => setTrocoPara(e.target.value)} 
+                    className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-400 rounded-xl p-3.5 text-sm text-zinc-100 font-bold outline-none transition-all" 
+                  />
+                  {trocoCalculado > 0 && (
+                    <p className="text-xs text-emerald-400 font-bold pt-0.5">Seu troco será de: R$ {trocoCalculado.toFixed(2)}</p>
+                  )}
+                </div>
+              )}
+            </div>
 
-  <button 
-    type="submit" 
-    disabled={enviandoPedido || valorTotalFinal === 0}
-    className="w-full py-4 bg-orange-500 disabled:opacity-30 disabled:pointer-events-none text-white text-base font-black uppercase tracking-widest rounded-xl transition-all shadow-md active:scale-95"
-  >
-    {enviandoPedido ? "Enviando..." : "🛒 FINALIZAR PEDIDO"}
-  </button>
-</form>
+            <button 
+              type="submit" 
+              className="w-full py-4 bg-orange-500 text-white text-base font-black uppercase tracking-widest rounded-xl transition-all shadow-md active:scale-95"
+            >
+              Conferir Pedido →
+            </button>
+          </form>
         </div>
       )}
 
-      {totalItensSelecionados > 0 && (
+      {etapa === "confirmacao" && (
+        <div className="max-w-md mx-auto px-4 mt-6 space-y-4 text-sm">
+          <div className="flex items-center gap-2 border-b border-zinc-800 pb-3">
+            <button type="button" onClick={() => setEtapa("checkout")} className="text-zinc-400 hover:text-zinc-200 font-bold text-xs bg-zinc-950 border border-zinc-800 px-3 py-1.5 rounded-xl shadow-sm">← Alterar Dados</button>
+            <h2 className="text-xs font-black uppercase text-amber-500 tracking-wider ml-auto">Conferir Pedido</h2>
+          </div>
+
+          <div className="bg-zinc-950 border border-zinc-800 rounded-3xl p-5 space-y-4 shadow-xl">
+            <div className="space-y-2 text-zinc-300 border-b border-zinc-800 pb-3 text-xs">
+              <p><strong className="text-zinc-400">Cliente:</strong> <span className="text-zinc-100 font-medium">{nome}</span></p>
+              <p><strong className="text-zinc-400">Entrega:</strong> <span className="text-zinc-100 font-medium">{endereco.trim() ? `${endereco.trim()}, Nº ${numeroCasa.trim()} ${referencia.trim() ? `(${referencia.trim()})` : ""}` : "Retirada no Balcão"}</span></p>
+              <p><strong className="text-zinc-400">Horário Marcado:</strong> <span className="text-orange-400 font-black font-mono text-sm">{horario}</span></p>
+              <p><strong className="text-zinc-400">Forma de Pagamento:</strong> <span className="text-zinc-100 font-bold uppercase">{pagamento}</span></p>
+              {pagamento === "Dinheiro" && trocoCalculado > 0 && (
+                <p className="text-emerald-400"><strong className="text-zinc-400">Troco para:</strong> R$ {parseFloat(trocoPara).toFixed(2)} (Troco de R$ {trocoCalculado.toFixed(2)})</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <span className="text-[10px] uppercase font-black text-zinc-500 block tracking-wider">Carrinho de Compras:</span>
+              {Object.entries(itens).map(([chave, qtd]) => {
+                if (qtd === 0) return null
+                const produto = DETALHES_PRODUTOS[chave]
+                const precoUnidade = PRECOS_PRODUTOS[chave]
+                return (
+                  <div key={chave} className="flex justify-between items-center text-zinc-200 text-xs">
+                    <span className="font-medium">{produto.icone} {qtd}x {produto.nome}</span>
+                    <span className="font-bold text-zinc-400">R$ {(precoUnidade * qtd).toFixed(2)}</span>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="border-t border-zinc-800 pt-3 space-y-1">
+              {descuentoCombo > 0 && (
+                <div className="flex justify-between text-emerald-400 font-bold text-xs">
+                  <span>Desconto de Combo aplicado:</span>
+                  <span>- R$ {descuentoCombo.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center font-black text-zinc-100 pt-1 text-sm">
+                <span>TOTAL A PAGAR:</span>
+                <span className="text-emerald-400 text-lg tracking-tight">R$ {valorTotalFinal.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+
+          <button 
+            type="button"
+            disabled={enviandoPedido}
+            onClick={enviarPedidoFinal}
+            className="w-full py-4 bg-emerald-600 disabled:opacity-40 text-white text-base font-black uppercase tracking-widest rounded-xl transition-all shadow-md active:scale-95"
+          >
+            {enviandoPedido ? "Enviando para Cozinha..." : "🚀 CONFIRMAR E ENVIAR PEDIDO"}
+          </button>
+        </div>
+      )}
+
+      {totalItensSelecionados > 0 && (etapa === "menu" || etapa === "checkout") && (
         <div className="fixed bottom-6 left-4 right-4 z-40 max-w-xl mx-auto">
           <div className="bg-zinc-950/95 backdrop-blur-md border border-zinc-800 rounded-2xl p-4 flex items-center justify-between shadow-2xl">
             <div>
@@ -462,7 +551,7 @@ export default function ClientePainel() {
                 onClick={() => setEtapa("menu")}
                 className="bg-zinc-900 text-zinc-300 text-xs font-black uppercase tracking-wide px-5 py-3.5 rounded-xl transition-all active:scale-95"
               >
-                Cardápio
+                ← Cardápio
               </button>
             )}
           </div>
