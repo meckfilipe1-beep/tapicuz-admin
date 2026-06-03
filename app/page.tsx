@@ -308,131 +308,131 @@ export default function ClientePainel() {
             <h2 className="text-xs font-black uppercase text-orange-500 tracking-wider ml-auto">Finalizar Pedido</h2>
           </div>
 
-          <form onSubmit={finalizarPedidoCliente} className="space-y-4 text-xs">
-            <div className="bg-zinc-950 border border-zinc-800/80 p-5 rounded-2xl space-y-4 shadow-md">
-              <div>
-                <label className="text-base font-black text-orange-400 uppercase block mb-2">Seu Nome *</label>
-                <input 
-                  type="text" 
-                  required 
-                  placeholder="Ex: Maria Souza" 
-                  value={nome} 
-                  onChange={(e) => setNome(e.target.value)} 
-                  className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-xl p-5 text-lg text-zinc-100 outline-none transition-all" 
-                />
-              </div>
+          <form onSubmit={finalizarPedidoCliente} className="space-y-3 text-[11px]">
+  <div className="bg-zinc-950 border border-zinc-800/80 p-4 rounded-2xl space-y-3 shadow-md">
+    <div>
+      <label className="text-xs font-black text-orange-400 uppercase block mb-1">Seu Nome *</label>
+      <input 
+        type="text" 
+        required 
+        placeholder="Ex: Maria Souza" 
+        value={nome} 
+        onChange={(e) => setNome(e.target.value)} 
+        className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-xl p-3.5 text-sm text-zinc-100 outline-none transition-all" 
+      />
+    </div>
 
-              <div className="grid grid-cols-3 gap-2">
-                <div className="col-span-2">
-                  <label className="text-base font-black text-orange-400 uppercase block mb-2">Endereço de Entrega</label>
-                  <input 
-                    type="text" 
-                    placeholder="Ex: Rua das Flores" 
-                    value={endereco} 
-                    onChange={(e) => setEndereco(e.target.value)} 
-                    className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-xl p-5 text-lg text-zinc-100 outline-none transition-all" 
-                  />
-                </div>
-                <div>
-                  <label className="text-base font-black text-orange-400 uppercase block mb-2">Número</label>
-                  <input 
-                    type="number"
-                    inputMode="numeric"
-                    placeholder="123" 
-                    value={numeroCasa} 
-                    onChange={(e) => setNumeroCasa(e.target.value)} 
-                    className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-xl p-5 text-xl font-black text-center text-zinc-100 outline-none transition-all" 
-                  />
-                </div>
-              </div>
+    <div className="grid grid-cols-3 gap-2">
+      <div className="col-span-2">
+        <label className="text-xs font-black text-orange-400 uppercase block mb-1">Endereço de Entrega</label>
+        <input 
+          type="text" 
+          placeholder="Ex: Rua das Flores" 
+          value={endereco} 
+          onChange={(e) => setEndereco(e.target.value)} 
+          className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-xl p-3.5 text-sm text-zinc-100 outline-none transition-all" 
+        />
+      </div>
+      <div>
+        <label className="text-xs font-black text-orange-400 uppercase block mb-1">Número</label>
+        <input 
+          type="number"
+          inputMode="numeric"
+          placeholder="123" 
+          value={numeroCasa} 
+          onChange={(e) => setNumeroCasa(e.target.value)} 
+          className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-xl p-3.5 text-sm font-black text-center text-zinc-100 outline-none transition-all" 
+        />
+      </div>
+    </div>
 
-              <div>
-                <label className="text-base font-black text-orange-400 uppercase block mb-2">Ponto de Referência</label>
-                <input 
-                  type="text" 
-                  placeholder="Ex: Próximo ao mercado" 
-                  value={referencia} 
-                  onChange={(e) => setReferencia(e.target.value)} 
-                  className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-xl p-5 text-lg text-zinc-100 outline-none transition-all" 
-                />
-              </div>
+    <div>
+      <label className="text-xs font-black text-orange-400 uppercase block mb-1">Ponto de Referência</label>
+      <input 
+        type="text" 
+        placeholder="Ex: Próximo ao mercado" 
+        value={referencia} 
+        onChange={(e) => setReferencia(e.target.value)} 
+        className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-xl p-3.5 text-sm text-zinc-100 outline-none transition-all" 
+      />
+    </div>
 
-              <div className="text-center pt-2">
-                <label className="text-base font-black text-orange-400 uppercase block mb-1">🕒 Horário da Entrega</label>
-                <div className="text-3xl font-black text-orange-500 mb-3 select-none">{horario}</div>
-                <div className="grid grid-cols-4 gap-1.5 max-h-44 overflow-y-auto p-1.5 bg-zinc-900 border border-zinc-800 rounded-xl">
-                  {OPCOES_HORARIOS.map((hora) => (
-                    <button
-                      key={hora}
-                      type="button"
-                      onClick={() => setHorario(hora)}
-                      className={`py-4 text-center rounded-lg font-bold text-base transition-all ${horario === hora ? "bg-orange-500 text-white font-black shadow-md" : "bg-zinc-950 text-zinc-400 border border-zinc-800 hover:bg-zinc-800 hover:text-zinc-200"}`}
-                    >
-                      {hora}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
+    <div className="text-center pt-1">
+      <label className="text-xs font-black text-orange-400 uppercase block mb-0.5">🕒 Horário da Entrega</label>
+      <div className="text-xl font-black text-orange-500 mb-2 select-none">{horario}</div>
+      <div className="grid grid-cols-4 gap-1 max-h-36 overflow-y-auto p-1 bg-zinc-900 border border-zinc-800 rounded-xl">
+        {OPCOES_HORARIOS.map((hora) => (
+          <button
+            key={hora}
+            type="button"
+            onClick={() => setHorario(hora)}
+            className={`py-2.5 text-center rounded-lg font-bold text-xs transition-all ${horario === hora ? "bg-orange-500 text-white font-black shadow-md" : "bg-zinc-950 text-zinc-400 border border-zinc-800 hover:bg-zinc-800 hover:text-zinc-200"}`}
+          >
+            {hora}
+          </button>
+        ))}
+      </div>
+    </div>
+  </div>
 
-            <div className="bg-zinc-950 border border-zinc-800/80 p-5 rounded-2xl space-y-4 shadow-md">
-              <div>
-                <label className="text-base font-black text-orange-400 uppercase block mb-2">Forma de Pagamento</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button 
-                    type="button" 
-                    onClick={() => setPagamento("Pix")}
-                    className={`p-5 rounded-xl border text-lg font-black text-center uppercase tracking-wider transition-all ${pagamento === "Pix" ? "bg-teal-500/10 border-teal-500 text-teal-400" : "bg-zinc-900 border-zinc-800 text-zinc-500"}`}
-                  >
-                    📲 PIX
-                  </button>
-                  <button 
-                    type="button" 
-                    onClick={() => setPagamento("Dinheiro")}
-                    className={`p-5 rounded-xl border text-lg font-black text-center uppercase tracking-wider transition-all ${pagamento === "Dinheiro" ? "bg-orange-500/10 border-orange-500 text-orange-400" : "bg-zinc-900 border-zinc-800 text-zinc-500"}`}
-                  >
-                    💵 DINHEIRO
-                  </button>
-                </div>
-              </div>
+  <div className="bg-zinc-950 border border-zinc-800/80 p-4 rounded-2xl space-y-3 shadow-md">
+    <div>
+      <label className="text-xs font-black text-orange-400 uppercase block mb-1">Forma de Pagamento</label>
+      <div className="grid grid-cols-2 gap-2">
+        <button 
+          type="button" 
+          onClick={() => setPagamento("Pix")}
+          className={`p-3.5 rounded-xl border text-sm font-black text-center uppercase tracking-wider transition-all ${pagamento === "Pix" ? "bg-teal-500/10 border-teal-500 text-teal-400" : "bg-zinc-900 border-zinc-800 text-zinc-500"}`}
+        >
+          📲 PIX
+        </button>
+        <button 
+          type="button" 
+          onClick={() => setPagamento("Dinheiro")}
+          className={`p-3.5 rounded-xl border text-sm font-black text-center uppercase tracking-wider transition-all ${pagamento === "Dinheiro" ? "bg-orange-500/10 border-orange-500 text-orange-400" : "bg-zinc-900 border-zinc-800 text-zinc-500"}`}
+        >
+          💵 DINHEIRO
+        </button>
+      </div>
+    </div>
 
-              {pagamento === "Dinheiro" && (
-                <div className="space-y-1.5 pt-1">
-                  <label className="text-base font-black text-orange-400 uppercase block mb-2">Precisa de troco para quanto?</label>
-                  <input 
-                    type="number"
-                    inputMode="decimal"
-                    placeholder="50" 
-                    value={trocoPara} 
-                    onChange={(e) => setTrocoPara(e.target.value)} 
-                    className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-400 rounded-xl p-5 text-lg text-zinc-100 font-bold outline-none transition-all" 
-                  />
-                  {trocoCalculado > 0 && (
-                    <p className="text-sm text-emerald-400 font-bold pt-1">Seu troco será de: R$ {trocoCalculado.toFixed(2)}</p>
-                  )}
-                </div>
-              )}
-            </div>
+    {pagamento === "Dinheiro" && (
+      <div className="space-y-1 pt-0.5">
+        <label className="text-xs font-black text-orange-400 uppercase block mb-1">Precisa de troco para quanto?</label>
+        <input 
+          type="number"
+          inputMode="decimal"
+          placeholder="50" 
+          value={trocoPara} 
+          onChange={(e) => setTrocoPara(e.target.value)} 
+          className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-400 rounded-xl p-3.5 text-sm text-zinc-100 font-bold outline-none transition-all" 
+        />
+        {trocoCalculado > 0 && (
+          <p className="text-xs text-emerald-400 font-bold pt-0.5">Seu troco será de: R$ {trocoCalculado.toFixed(2)}</p>
+        )}
+      </div>
+    )}
+  </div>
 
-            <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-2xl space-y-1.5">
-              <div className="flex justify-between text-zinc-400 font-medium"><span>Itens adicionados:</span><span>{totalItensSelecionados}x</span></div>
-              {descuentoCombo > 0 && (
-                <div className="flex justify-between text-emerald-400 font-bold"><span>Combo Desconto:</span><span>- R$ {descuentoCombo.toFixed(2)}</span></div>
-              )}
-              <div className="flex justify-between items-center text-zinc-100 font-black pt-1.5 border-t border-zinc-800">
-                <span>TOTAL A PAGAR:</span>
-                <span className="text-base text-emerald-400">R$ {valorTotalFinal.toFixed(2)}</span>
-              </div>
-            </div>
+  <div className="bg-zinc-950 border border-zinc-800 p-3.5 rounded-2xl space-y-1">
+    <div className="flex justify-between text-zinc-400 font-medium"><span>Itens adicionados:</span><span>{totalItensSelecionados}x</span></div>
+    {descuentoCombo > 0 && (
+      <div className="flex justify-between text-emerald-400 font-bold"><span>Combo Desconto:</span><span>- R$ {descuentoCombo.toFixed(2)}</span></div>
+    )}
+    <div className="flex justify-between items-center text-zinc-100 font-black pt-1 border-t border-zinc-800">
+      <span>TOTAL A PAGAR:</span>
+      <span className="text-sm text-emerald-400">R$ {valorTotalFinal.toFixed(2)}</span>
+    </div>
+  </div>
 
-            <button 
-              type="submit" 
-              disabled={enviandoPedido || valorTotalFinal === 0}
-              className="w-full py-6 bg-orange-500 disabled:opacity-30 disabled:pointer-events-none text-white text-lg font-black uppercase tracking-widest rounded-xl transition-all shadow-md active:scale-95"
-            >
-              {enviandoPedido ? "Enviando..." : "🛒 FINALIZAR PEDIDO"}
-            </button>
-          </form>
+  <button 
+    type="submit" 
+    disabled={enviandoPedido || valorTotalFinal === 0}
+    className="w-full py-4 bg-orange-500 disabled:opacity-30 disabled:pointer-events-none text-white text-base font-black uppercase tracking-widest rounded-xl transition-all shadow-md active:scale-95"
+  >
+    {enviandoPedido ? "Enviando..." : "🛒 FINALIZAR PEDIDO"}
+  </button>
+</form>
         </div>
       )}
 
