@@ -229,7 +229,7 @@ export default function ClientePainel() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-2">
+          <div className="grid grid-cols-1 gap-4">
             {Object.keys(DETALHES_PRODUTOS).map((chave) => {
               const produto = DETALHES_PRODUTOS[chave]
               const preco = PRECOS_PRODUTOS[chave]
@@ -238,53 +238,57 @@ export default function ClientePainel() {
               return (
                 <div 
                   key={chave} 
-                  className={`border rounded-3xl p-5 flex items-center justify-between gap-4 transition-all bg-zinc-950 ${quantidade > 0 ? "border-orange-500/50 bg-orange-950/10 shadow-lg" : "border-zinc-800/80"}`}
+                  className={`border rounded-3xl p-6 flex flex-col items-center gap-5 transition-all bg-zinc-950 ${quantidade > 0 ? "border-orange-500/50 bg-orange-950/10 shadow-lg" : "border-zinc-800/80"}`}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-24 h-24 relative rounded-xl overflow-hidden">
-                      <Image
-                        src={`/produtos/${chave === "tapiocaMolhada"
-                          ? "tapioca_molhada.png"
-                          : chave === "tapiocaManteiga"
-                          ? "tapioca_manteiga.png"
-                          : chave === "tapiocaQueijo"
-                          ? "tapioca_queijo.png"
-                          : chave === "cuscuzMilho"
-                          ? "cuscuz_milho.png"
-                          : chave === "cuscuzArroz"
-                          ? "cuscuz_arroz.png"
-                          : chave === "cuscuzMilhoArroz"
-                          ? "cuscuz_milho_arroz.png"
-                          : "cafe_leite.png"
-                        }`}
-                        alt={produto.nome}
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-zinc-100 text-lg tracking-wide uppercase">{produto.nome}</h3>
-                      <span className="text-emerald-400 font-black text-base block mt-0.5">R$ {preco.toFixed(2)}</span>
-                    </div>
+                  {/* IMAGEM CENTRALIZADA NO TOPO */}
+<div className="w-full flex justify-center mb-3">
+  <Image
+    src={`/produtos/${
+      chave === "tapiocaMolhada"
+        ? "tapioca_molhada.png"
+        : chave === "tapiocaManteiga"
+        ? "tapioca_manteiga.png"
+        : chave === "tapiocaQueijo"
+        ? "tapioca_queijo.png"
+        : chave === "cuscuzMilho"
+        ? "cuscuz_milho.png"
+        : chave === "cuscuzArroz"
+        ? "cuscuz_arroz.png"
+        : chave === "cuscuzMilhoArroz"
+        ? "cuscuz_milho_arroz.png"
+        : "cafe_leite.png"
+    }`}
+    alt={produto.nome}
+    width={112} // Define o tamanho base para o Next.js
+    height={112}
+    className="w-28 h-28 object-cover aspect-square rounded-2xl border-2 border-zinc-800 shadow-md"
+  />
+</div>
+
+                  {/* DESCRIÇÃO EMBAIXO CENTRALIZADA */}
+                  <div className="text-center">
+                    <h3 className="font-bold text-zinc-100 text-xl tracking-wide uppercase">{produto.nome}</h3>
+                    <span className="text-emerald-400 font-black text-lg block mt-1">R$ {preco.toFixed(2)}</span>
                   </div>
 
-                  <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-xl p-1 gap-1">
+                  {/* BOTÕES DE QUANTIDADE CENTRALIZADOS */}
+                  <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-2xl p-1.5 gap-2 w-full max-w-[200px] justify-center">
                     {quantidade > 0 && (
                       <>
                         <button 
                           type="button" 
                           onClick={() => alterarQtd(chave, -1)} 
-                          className="w-12 h-12 rounded-lg bg-zinc-950 text-zinc-400 hover:text-zinc-200 shadow-sm active:scale-90 font-black text-sm transition-all"
+                          className="w-12 h-12 rounded-xl bg-zinc-950 text-zinc-400 hover:text-zinc-200 shadow-sm active:scale-90 font-black text-lg transition-all"
                         >
                           -
                         </button>
-                        <span className="font-black text-zinc-200 text-lg w-8 text-center">{quantidade}</span>
+                        <span className="font-black text-zinc-200 text-xl w-10 text-center">{quantidade}</span>
                       </>
                     )}
                     <button 
                       type="button" 
                       onClick={() => alterarQtd(chave, 1)} 
-                      className={`h-12 rounded-lg font-black text-xs transition-all active:scale-95 flex items-center justify-center ${quantidade > 0 ? "w-12 bg-orange-500 text-white font-black text-sm" : "px-4 bg-zinc-950 text-zinc-300 border border-zinc-800 hover:bg-zinc-900"}`}
+                      className={`h-12 rounded-xl font-black transition-all active:scale-95 flex items-center justify-center ${quantidade > 0 ? "w-12 bg-orange-500 text-white text-lg" : "w-full px-6 bg-zinc-950 text-zinc-300 border border-zinc-800 text-sm uppercase tracking-widest"}`}
                     >
                       {quantidade > 0 ? "+" : "Adicionar"}
                     </button>
@@ -296,6 +300,7 @@ export default function ClientePainel() {
         </div>
       )}
 
+      {/* RESTANTE DO CÓDIGO (Checkout e Carrinho Suspenso) CONTINUA IGUAL... */}
       {etapa === "checkout" && (
         <div className="max-w-md mx-auto px-4 mt-6 space-y-6">
           <div className="flex items-center gap-2 border-b border-zinc-800 pb-3">
@@ -431,7 +436,6 @@ export default function ClientePainel() {
         </div>
       )}
 
-      {/* REVISADO: Sem comparação redundante com "sucesso" */}
       {totalItensSelecionados > 0 && (
         <div className="fixed bottom-6 left-4 right-4 z-40 max-w-xl mx-auto">
           <div className="bg-zinc-950/95 backdrop-blur-md border border-zinc-800 rounded-2xl p-4 flex items-center justify-between shadow-2xl">
@@ -464,7 +468,6 @@ export default function ClientePainel() {
           </div>
         </div>
       )}
-
     </main>
   )
 }
