@@ -46,8 +46,8 @@ export default function ClientePainel() {
   const [horario, setHorario] = useState("05:30")
   const [mostrarListaHorarios, setMostrarListaHorarios] = useState(false)
 
-  // ESTADO PARA O FEEDBACK VISUAL DO BOTÃO PIX
-  const [statusPix, setStatusPix] = useState<"normal" | "carregando" | "copiado">("normal")
+  // ESTADO DO PIX COM RETORNO DE ERRO TRATADO
+  const [statusPix, setStatusPix] = useState<"normal" | "carregando" | "copiado" | "erro">("normal")
 
   const [itens, setItens] = useState<{ [key: string]: number }>({
     tapiocaMolhada: 0,
@@ -72,6 +72,9 @@ export default function ClientePainel() {
       if (snap.exists()) {
         setLojaAberta(snap.data().aberta)
       }
+      setCarregandoLoja(false)
+    }, (error) => {
+      console.error("Erro ao carregar status da loja:", error)
       setCarregandoLoja(false)
     })
     return () => unsubscribe()
@@ -197,21 +200,51 @@ export default function ClientePainel() {
   }
 
   if (etapa === "sucesso") {
+    const mensagemWhats = encodeURIComponent(
+      `Olá! Acabei de fazer um pedido pelo painel.\n👤 *Cliente:* ${nome}\n💰 *Valor:* R$ ${valorTotalFinal.toFixed(2)}\n\nSegue em anexo o meu comprovante Pix! 👇`
+    );
+    // Insira o número do WhatsApp da loja aqui (apenas números com DDD)
+    const numeroWhatsAppLoja = "5581999999999"; 
+
     return (
       <div className="min-h-screen bg-zinc-900 flex flex-col items-center justify-center px-4 text-center">
-        <div className="max-w-md w-full bg-emerald-950/40 border border-emerald-500/30 rounded-3xl p-8 shadow-2xl space-y-6">
-          <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center text-3xl mx-auto shadow-inner">
+        <div className="max-w-md w-full bg-zinc-950 border border-zinc-800 rounded-3xl p-8 shadow-2xl space-y-6">
+          <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center text-3xl mx-auto shadow-inner animate-bounce">
             ✓
           </div>
-          <h2 className="text-xl font-black text-emerald-400 tracking-wider uppercase">
-            PEDIDO ENVIADO COM SUCESSO!
-          </h2>
-          <p className="text-xs text-zinc-400">Sua encomenda foi enviada para a produção.</p>
+          <div className="space-y-2">
+            <h2 className="text-xl font-black text-emerald-400 tracking-wider uppercase">
+              PEDIDO ENVIADO COM SUCESSO!
+            </h2>
+            <p className="text-xs text-zinc-400 px-4">
+              Sua encomenda já chegou no nosso sistema e foi direto para a produção!
+            </p>
+          </div>
+
+          {/* SESSÃO CRIATIVA DE COMPROVANTE APENAS SE FOR PAGAMENTO VIA PIX */}
+          {pagamento === "Pix" && (
+            <div className="bg-zinc-900/90 border border-teal-500/30 p-5 rounded-2xl space-y-3 text-center my-2">
+              <span className="text-2xl block animate-pulse">📲</span>
+              <h3 className="text-xs font-black text-teal-400 uppercase tracking-widest">Falta muito pouco!</h3>
+              <p className="text-[11px] text-zinc-400 leading-normal">
+                Para darmos prioridade máxima no seu preparo, clique abaixo para nos enviar o comprovante do Pix.
+              </p>
+              <a
+                href={`https://wa.me/${numeroWhatsAppLoja}?text=${mensagemWhats}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex w-full items-center justify-center gap-2 py-3 bg-teal-600 hover:bg-teal-500 text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md active:scale-95"
+              >
+                <span>💬 ENVIAR COMPROVANTE</span>
+              </a>
+            </div>
+          )}
+
           <button 
             onClick={reiniciarPainel}
-            className="w-full py-3.5 bg-emerald-600 text-white font-black text-xs uppercase tracking-widest rounded-xl shadow-lg shadow-emerald-600/20 active:scale-95 transition-all"
+            className="w-full py-3.5 bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 font-black text-xs uppercase tracking-widest rounded-xl shadow-md active:scale-95 transition-all"
           >
-            FINALIZAR
+            VOLTAR PARA O INÍCIO
           </button>
         </div>
       </div>
@@ -401,7 +434,7 @@ export default function ClientePainel() {
                 </button>
 
                 {mostrarListaHorarios && (
-                  <div className="mt-2 grid grid-cols-4 gap-1.5 max-h-40 overflow-y-auto p-2 bg-zinc-900 border border-orange-500/30 rounded-xl shadow-inner animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="mt-2 grid grid-cols-4 gap-1.5 max-h-40 overflow-y-auto p-2 bg-zinc-900 border border-orange-500/30 rounded-xl shadow-inner">
                     {OPCOES_HORARIOS.map((hora) => (
                       <button
                         key={hora}
@@ -449,7 +482,6 @@ export default function ClientePainel() {
                 <div className="space-y-3 pt-2">
                   <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 text-center">
                     
-                    {/* VALOR DO PIX CENTRALIZADO */}
                     <p className="text-orange-400 font-black text-xs uppercase tracking-wider">
                       Total a pagar no PIX
                     </p>
@@ -457,7 +489,7 @@ export default function ClientePainel() {
                       R$ {valorTotalFinal.toFixed(2)}
                     </p>
                     
-                    {/* BOTÃO INTELIGENTE REESTILIZADO (MUDANÇA DE COR E ANIMAÇÃO DINÂMICA) */}
+                    {/* BOTÃO ULTRA-ESTÁVEL (NÃO TRAVA E EVITA QUEDA DO SERVIDOR) */}
                     <button
                       type="button"
                       disabled={statusPix === "carregando"}
@@ -465,50 +497,45 @@ export default function ClientePainel() {
                         try {
                           setStatusPix("carregando");
 
-                          // Executa a função nativa do seu pix.ts (+55 da Sueli)
-                          const { payload } = await gerarPixCopiaECola(valorTotalFinal);
-
-                          // Caixa de texto oculta para forçar cópia cross-platform em celulares
-                          const textArea = document.createElement("textarea");
-                          textArea.value = payload;
-                          textArea.style.position = "fixed"; 
-                          textArea.style.left = "-9999px";
-                          document.body.appendChild(textArea);
-                          textArea.focus();
-                          textArea.select();
-                          textArea.setSelectionRange(0, 99999);
-
-                          try {
-                            document.execCommand("copy");
-                          } catch (err) {
-                            await navigator.clipboard.writeText(payload);
+                          // 1. Executa a função assíncrona do payload fora do fluxo do DOM
+                          const dadosPix = await gerarPixCopiaECola(valorTotalFinal);
+                          
+                          if (!dadosPix || !dadosPix.payload) {
+                            throw new Error("Payload inválido");
                           }
 
-                          document.body.removeChild(textArea);
+                          // 2. Criação estruturada de input para evitar congelamento no mobile
+                          const inputInvisivel = document.createElement("input");
+                          inputInvisivel.value = dadosPix.payload;
+                          inputInvisivel.style.position = "absolute";
+                          inputInvisivel.style.left = "-9999px";
+                          document.body.appendChild(inputInvisivel);
+                          inputInvisivel.select();
+                          inputInvisivel.setSelectionRange(0, 99999);
                           
-                          // Dispara o estado visual de sucesso!
-                          setStatusPix("copiado");
+                          document.execCommand("copy");
+                          document.body.removeChild(inputInvisivel);
 
-                          // Retorna ao botão original após 3 segundos
-                          setTimeout(() => {
-                            setStatusPix("normal");
-                          }, 3000);
+                          setStatusPix("copiado");
+                          setTimeout(() => setStatusPix("normal"), 3000);
 
                         } catch (error) {
                           console.error("Erro no fluxo do PIX:", error);
-                          alert("Não foi possível gerar o PIX automaticamente. Por favor, tente novamente.");
-                          setStatusPix("normal");
+                          setStatusPix("erro");
+                          setTimeout(() => setStatusPix("normal"), 4000);
                         }
                       }}
                       className={`mt-4 w-full font-black py-4 rounded-xl active:scale-95 transition-all text-xs tracking-widest uppercase text-white shadow-md
-                        ${statusPix === "normal" ? "bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800" : ""}
-                        ${statusPix === "carregando" ? "bg-zinc-600 cursor-not-allowed animate-pulse" : ""}
-                        ${statusPix === "copiado" ? "bg-blue-600 animate-bounce" : ""}
+                        ${statusPix === "normal" ? "bg-emerald-600 hover:bg-emerald-700" : ""}
+                        ${statusPix === "carregando" ? "bg-zinc-700 cursor-not-allowed animate-pulse" : ""}
+                        ${statusPix === "copiado" ? "bg-blue-600" : ""}
+                        ${statusPix === "erro" ? "bg-red-600" : ""}
                       `}
                     >
                       {statusPix === "normal" && "📋 COPIAR PIX AUTOMÁTICO"}
                       {statusPix === "carregando" && "⌛ GERANDO PIX..."}
-                      {statusPix === "copiado" && "✅ COPIADO! COLE NO SEU BANCO"}
+                      {statusPix === "copiado" && "✅ COPIADO COM SUCESSO!"}
+                      {statusPix === "erro" && "❌ ERRO. CLIQUE PARA TENTAR NOVO"}
                     </button>
                   </div>
                 </div>
