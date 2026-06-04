@@ -265,7 +265,7 @@ export default function ClientePainel() {
               PEDIDO ENVIADO COM SUCESSO!
             </h2>
             <p className="text-xs text-zinc-400 px-4">
-              Sua encomenda já chegou no nosso system e foi direto para a produção!
+              Sua encomenda já chegou no nosso sistema e foi direto para a produção!
             </p>
           </div>
 
@@ -620,7 +620,7 @@ export default function ClientePainel() {
 
                           const dadosPix = await gerarPixCopiaECola(valorTotalFinal);
                           if (!dadosPix || !dadosPix.payload) {
-                            throw new Error("Payload inválido");
+                            throw new Error("Retorno do PIX inválido ou vazio");
                           }
 
                           if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -643,9 +643,10 @@ export default function ClientePainel() {
                           setTimeout(() => setStatusPix("normal"), 4000);
 
                         } catch (error) {
-                          console.error("Erro no fluxo do PIX:", error);
+                          console.error("Erro crítico no fluxo do PIX:", error);
                           setStatusPix("erro");
-                          setTimeout(() => setStatusPix("normal"), 4000);
+                          alert("Não foi possível gerar o código PIX automaticamente. Certifique-se de que a chave da Sueli está configurada corretamente no arquivo lib/pix.");
+                          setTimeout(() => setStatusPix("normal"), 5000);
                         }
                       }}
                       className={`mt-4 w-full font-black py-4 rounded-xl active:scale-95 transition-all text-xs tracking-widest uppercase text-white shadow-md
@@ -658,7 +659,7 @@ export default function ClientePainel() {
                       {statusPix === "normal" && "📋 PIX COPIAR E COLAR"}
                       {statusPix === "carregando" && "⌛ GERANDO PIX..."}
                       {statusPix === "copiado" && "✅ COPIADO COM SUCESSO!"}
-                      {statusPix === "erro" && "❌ ERRO. CLIQUE PARA TENTAR NOVO"}
+                      {statusPix === "erro" && "❌ ERRO AO GERAR PIX"}
                     </button>
                   </div>
                 </div>
