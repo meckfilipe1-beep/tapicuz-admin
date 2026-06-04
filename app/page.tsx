@@ -6,10 +6,16 @@ import { collection, doc, onSnapshot, addDoc } from "firebase/firestore"
 import Image from "next/image"
 import { gerarPixCopiaECola } from "@/lib/pix"
 
+// Ajuste na tipagem das etapas do app
+type Etapa = "menu" | "observacao" | "checkout" | "confirmacao" | "sucesso"
+
+// 1. AJUSTE DE PREÇOS (Se a Sueli mudar os valores, é só alterar aqui)
 const PRECOS_PRODUTOS: { [key: string]: number } = {
   tapiocaMolhada: 8.00,
   tapiocaManteiga: 6.00,
   tapiocaQueijo: 8.00,
+  tapiocaOvo: 8.00,          
+  tapiocaQueijoOvo: 10.00,    
   cuscuzMilho: 5.00,
   cuscuzArroz: 6.00,
   cuscuzMilhoArroz: 6.00,
@@ -20,9 +26,11 @@ const DETALHES_PRODUTOS: { [key: string]: { nome: string; icone: string } } = {
   tapiocaMolhada: { nome: "Tapioca Molhada", icone: "🥥" },
   tapiocaManteiga: { nome: "Tapioca com Manteiga", icone: "🧈" },
   tapiocaQueijo: { nome: "Tapioca com Queijo", icone: "🧀" },
+  tapiocaOvo: { nome: "Tapioca com Ovo", icone: "🥚" },                  
+  tapiocaQueijoOvo: { nome: "Tapioca com Queijo e Ovo", icone: "🧀🥚" },
   cuscuzMilho: { nome: "Cuszuz de Milho", icone: "🌽" },
   cuscuzArroz: { nome: "Cuscuz de Arroz", icone: "🍚" },
-  cuscuzMilhoArroz: { nome: "Cuscuz Milho e Arroz (Misto)", icone: "🎛️" },
+  cuscuzMilhoArroz: { nome: "Cuscuz de Milho e Arroz", icone: "🍲" },
   cafe: { nome: "Café Quentinho", icone: "☕" }
 }
 
@@ -35,24 +43,28 @@ export default function ClientePainel() {
   const [lojaAberta, setLojaAberta] = useState<boolean>(true)
   const [carregandoLoja, setCarregandoLoja] = useState(true)
   const [enviandoPedido, setEnviandoPedido] = useState(false)
-  const [etapa, setEtapa] = useState<"menu" | "checkout" | "confirmacao" | "sucesso">("menu")
+  const [etapa, setEtapa] = useState<Etapa>("menu")
 
   const [nome, setNome] = useState("")
   const [endereco, setEndereco] = useState("")
   const [numeroCasa, setNumeroCasa] = useState("")
   const [referencia, setReferencia] = useState("")
+  const [observacao, setObservacao] = useState("") // Novo estado para a observação
   const [pagamento, setPagamento] = useState<"Pix" | "Dinheiro">("Pix")
   const [trocoPara, setTrocoPara] = useState("")
-  const [horario, setHorario] = useState("05:30")
+  const [horario, setHorario] = useState("0:00")
   const [mostrarListaHorarios, setMostrarListaHorarios] = useState(false)
 
-  // ESTADO DO PIX COM RETORNO DE ERRO TRATADO
   const [statusPix, setStatusPix] = useState<"normal" | "carregando" | "copiado" | "erro">("normal")
+  const [mostrarAlertaPix, setMostrarAlertaPix] = useState(false)
+  const [erroValidacao, setErroValidacao] = useState<string | null>(null)
 
   const [itens, setItens] = useState<{ [key: string]: number }>({
     tapiocaMolhada: 0,
     tapiocaManteiga: 0,
     tapiocaQueijo: 0,
+    tapiocaOvo: 0,          
+    tapiocaQueijoOvo: 0,    
     cuscuzMilho: 0,
     cuscuzArroz: 0,
     cuscuzMilhoArroz: 0,
@@ -122,7 +134,33 @@ export default function ClientePainel() {
 
   function irParaConferencia(e: any) {
     e.preventDefault()
-    if (!nome.trim() || valorTotalFinal === 0 || !lojaAberta) return
+    setErroValidacao(null)
+
+    if (!lojaAberta) return
+
+    if (valorTotalFinal === 0) {
+      setErroValidacao("Você não adicionou nenhum item ao carrinho.")
+      return
+    }
+    if (!nome.trim()) {
+      setErroValidacao("Por favor, preencha o campo: Seu Nome.")
+      return
+    }
+    if (!endereco.trim()) {
+      setErroValidacao("Por favor, preencha o campo: Endereço de Entrega.")
+      return
+    }
+    if (!numeroCasa.trim()) {
+      setErroValidacao("Por favor, preencha o campo: Número da Casa.")
+      return
+    }
+    if (horario === "0:00") {
+      setErroValidacao("Por favor, escolha um Horário para a sua entrega.")
+      const elementoHora = document.getElementById("campo-horario")
+      if (elementoHora) elementoHora.scrollIntoView({ behavior: "smooth" })
+      return
+    }
+    
     setEtapa("confirmacao")
   }
 
@@ -137,13 +175,12 @@ export default function ClientePainel() {
       localStorage.setItem("tapicuz_referencia", referencia.trim())
     }
 
-    const enderecoCompleto = endereco.trim() 
-      ? `${endereco.trim()}, Nº ${numeroCasa.trim()} ${referencia.trim() ? `- Ref: ${referencia.trim()}` : ""}`
-      : "Retirada no Balcão"
+    const enderecoCompleto = `${endereco.trim()}, Nº ${numeroCasa.trim()} ${referencia.trim() ? `- Ref: ${referencia.trim()}` : ""}`
 
     const payloadPedido = {
       nome: nome.trim(),
       endereco: enderecoCompleto,
+      observacao: observacao.trim(), // Enviando a observação para o banco de dados da Sueli
       pagamento,
       troco: trocoCalculado,
       valorTotal: valorTotalFinal,
@@ -159,15 +196,27 @@ export default function ClientePainel() {
       setEtapa("sucesso")
     } catch (error) {
       console.error(error)
-      alert("Houve um erro ao processar o envio. Tente novamente.")
     } finally {
       setEnviandoPedido(false)
     }
   }
 
   function reiniciarPainel() {
-    setItens({ tapiocaMolhada: 0, tapiocaManteiga: 0, tapiocaQueijo: 0, cuscuzMilho: 0, cuscuzArroz: 0, cuscuzMilhoArroz: 0, cafe: 0 })
+    setItens({ 
+      tapiocaMolhada: 0, 
+      tapiocaManteiga: 0, 
+      tapiocaQueijo: 0, 
+      tapiocaOvo: 0, 
+      tapiocaQueijoOvo: 0, 
+      cuscuzMilho: 0, 
+      cuscuzArroz: 0, 
+      cuscuzMilhoArroz: 0, 
+      cafe: 0 
+    })
+    setObservacao("") // Limpa o campo de observação para o próximo cliente
     setTrocoPara("")
+    setHorario("0:00")
+    setErroValidacao(null)
     setEtapa("menu")
   }
 
@@ -200,12 +249,6 @@ export default function ClientePainel() {
   }
 
   if (etapa === "sucesso") {
-    const mensagemWhats = encodeURIComponent(
-      `Olá! Acabei de fazer um pedido pelo painel.\n👤 *Cliente:* ${nome}\n💰 *Valor:* R$ ${valorTotalFinal.toFixed(2)}\n\nSegue em anexo o meu comprovante Pix! 👇`
-    );
-    // Insira o número do WhatsApp da loja aqui (apenas números com DDD)
-    const numeroWhatsAppLoja = "5581999999999"; 
-
     return (
       <div className="min-h-screen bg-zinc-900 flex flex-col items-center justify-center px-4 text-center">
         <div className="max-w-md w-full bg-zinc-950 border border-zinc-800 rounded-3xl p-8 shadow-2xl space-y-6">
@@ -221,25 +264,6 @@ export default function ClientePainel() {
             </p>
           </div>
 
-          {/* SESSÃO CRIATIVA DE COMPROVANTE APENAS SE FOR PAGAMENTO VIA PIX */}
-          {pagamento === "Pix" && (
-            <div className="bg-zinc-900/90 border border-teal-500/30 p-5 rounded-2xl space-y-3 text-center my-2">
-              <span className="text-2xl block animate-pulse">📲</span>
-              <h3 className="text-xs font-black text-teal-400 uppercase tracking-widest">Falta muito pouco!</h3>
-              <p className="text-[11px] text-zinc-400 leading-normal">
-                Para darmos prioridade máxima no seu preparo, clique abaixo para nos enviar o comprovante do Pix.
-              </p>
-              <a
-                href={`https://wa.me/${numeroWhatsAppLoja}?text=${mensagemWhats}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex w-full items-center justify-center gap-2 py-3 bg-teal-600 hover:bg-teal-500 text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md active:scale-95"
-              >
-                <span>💬 ENVIAR COMPROVANTE</span>
-              </a>
-            </div>
-          )}
-
           <button 
             onClick={reiniciarPainel}
             className="w-full py-3.5 bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 font-black text-xs uppercase tracking-widest rounded-xl shadow-md active:scale-95 transition-all"
@@ -254,6 +278,41 @@ export default function ClientePainel() {
   return (
     <main className="min-h-screen bg-zinc-900 text-zinc-200 pb-32 font-sans antialiased selection:bg-orange-500/20">
       
+      {/* CARD FLUTUANTE DO PIX */}
+      {mostrarAlertaPix && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+          <div className="bg-zinc-950 border-4 border-emerald-500 max-w-md w-full rounded-[32px] p-8 text-center shadow-2xl space-y-6">
+            <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 text-4xl flex items-center justify-center mx-auto">
+              📋
+            </div>
+            
+            <h3 className="text-2xl font-black text-emerald-400 uppercase tracking-wide">
+              CÓDIGO PIX COPIADO!
+            </h3>
+            
+            <div className="space-y-4 text-zinc-100 text-xl font-bold leading-snug">
+              <p>
+                Olá, <span className="text-orange-400 font-black underline decoration-2">{nome || "Cliente"}</span>!
+              </p>
+              <p className="text-white">
+                O código de pagamento foi realizado com sucesso.
+              </p>
+              <p className="bg-zinc-900 border border-zinc-800 text-emerald-400 p-5 rounded-2xl font-black text-2xl tracking-wide uppercase shadow-inner">
+                NÃO ESQUEÇA DE ENVIAR O COMPROVANTE. OBRIGADO
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setMostrarAlertaPix(false)}
+              className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-base uppercase tracking-widest rounded-xl transition-all active:scale-95 shadow-lg block mt-2"
+            >
+              OK, ENTENDIDO!
+            </button>
+          </div>
+        </div>
+      )}
+
       <header className="sticky top-0 z-40 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800/60 px-4 py-4 shadow-md">
         <div className="max-w-2xl mx-auto flex items-center justify-center relative">
           <div className="text-center select-none">
@@ -267,7 +326,7 @@ export default function ClientePainel() {
         </div>
       </header>
 
-      {(etapa === "menu" || etapa === "checkout") && (
+      {(etapa === "menu" || etapa === "observacao" || etapa === "checkout") && (
         <div className="max-w-2xl mx-auto w-full px-0 sm:px-4">
           <div className="w-full overflow-hidden rounded-b-3xl shadow-lg border-b border-zinc-800/50 block">
             <Image
@@ -307,18 +366,14 @@ export default function ClientePainel() {
                   <div className="w-full flex justify-center mb-3">
                     <Image
                       src={`/produtos/${
-                        chave === "tapiocaMolhada"
-                          ? "tapioca_molhada.png"
-                          : chave === "tapiocaManteiga"
-                          ? "tapioca_manteiga.png"
-                          : chave === "tapiocaQueijo"
-                          ? "tapioca_queijo.png"
-                          : chave === "cuscuzMilho"
-                          ? "cuscuz_milho.png"
-                          : chave === "cuscuzArroz"
-                          ? "cuscuz_arroz.png"
-                          : chave === "cuscuzMilhoArroz"
-                          ? "cuscuz_milho_arroz.png"
+                        chave === "tapiocaMolhada" ? "tapioca_molhada.png"
+                          : chave === "tapiocaManteiga" ? "tapioca_manteiga.png"
+                          : chave === "tapiocaQueijo" ? "tapioca_queijo.png"
+                          : chave === "tapiocaOvo" ? "tapioca_ovo.png"              
+                          : chave === "tapiocaQueijoOvo" ? "tapioca_queijo_ovo.png"  
+                          : chave === "cuscuzMilho" ? "cuscuz_milho.png"
+                          : chave === "cuscuzArroz" ? "cuscuz_arroz.png"
+                          : chave === "cuscuzMilhoArroz" ? "cuscuz_milho_arroz.png"
                           : "cafe_leite.png"
                       }`}
                       alt={produto.nome}
@@ -363,53 +418,107 @@ export default function ClientePainel() {
         </div>
       )}
 
-      {etapa === "checkout" && (
+      {/* NOVA TELA: OBSERVAÇÃO DO PEDIDO */}
+      {etapa === "observacao" && (
         <div className="max-w-md mx-auto px-4 mt-6 space-y-6">
           <div className="flex items-center gap-2 border-b border-zinc-800 pb-3">
             <button type="button" onClick={() => setEtapa("menu")} className="text-zinc-400 hover:text-zinc-200 font-bold text-xs bg-zinc-950 border border-zinc-800 px-3 py-1.5 rounded-xl shadow-sm">← Voltar</button>
+            <h2 className="text-xs font-black uppercase text-orange-500 tracking-wider ml-auto">Preferências</h2>
+          </div>
+
+          <div className="bg-zinc-950 border border-zinc-800/80 p-6 rounded-3xl space-y-4 shadow-md">
+            <h2 className="text-lg font-black text-zinc-100 uppercase tracking-wide">
+              Observações do Pedido
+            </h2>
+
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              Deseja mudar algo na sua comida? <br />
+              <span className="text-orange-400/90 font-medium">Ex: Sem coco ralado, pouca manteiga, mais leite de coco, café sem açúcar...</span>
+            </p>
+
+            <textarea
+              value={observacao}
+              onChange={(e) => setObservacao(e.target.value)}
+              placeholder="Digite aqui como você quer o seu pedido..."
+              className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-2xl p-4 text-sm text-zinc-100 outline-none transition-all resize-none font-medium placeholder:text-zinc-600"
+              rows={4}
+            />
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setObservacao(""); // Limpa o campo caso clique em pular
+                  setEtapa("checkout");
+                }}
+                className="w-1/3 py-4 bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 font-black text-xs uppercase tracking-widest rounded-xl transition-all active:scale-95"
+              >
+                Pular
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setEtapa("checkout")}
+                className="w-2/3 py-4 bg-orange-500 text-white text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-md active:scale-95"
+              >
+                Continuar →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {etapa === "checkout" && (
+        <div className="max-w-md mx-auto px-4 mt-6 space-y-6">
+          <div className="flex items-center gap-2 border-b border-zinc-800 pb-3">
+            <button type="button" onClick={() => setEtapa("observacao")} className="text-zinc-400 hover:text-zinc-200 font-bold text-xs bg-zinc-950 border border-zinc-800 px-3 py-1.5 rounded-xl shadow-sm">← Voltar</button>
             <h2 className="text-xs font-black uppercase text-orange-500 tracking-wider ml-auto">Informações de Entrega</h2>
           </div>
 
-          <form onSubmit={irParaConferencia} className="space-y-3 text-[11px]">
+          {erroValidacao && (
+            <div className="bg-red-500 border border-red-600 text-white p-4 rounded-2xl font-black text-xs uppercase tracking-wider text-center animate-pulse shadow-lg">
+              ⚠️ {erroValidacao}
+            </div>
+          )}
+
+          <form onSubmit={irParaConferencia} className="space-y-3 text-[11px]" noValidate>
             <div className="bg-zinc-950 border border-zinc-800/80 p-4 rounded-2xl space-y-3 shadow-md">
               <div>
                 <label className="text-xs font-black text-orange-400 uppercase block mb-1">Seu Nome *</label>
                 <input 
                   type="text" 
-                  required 
                   placeholder="Ex: Maria Souza" 
                   value={nome} 
-                  onChange={(e) => setNome(e.target.value)} 
+                  onChange={(e) => { setNome(e.target.value); setErroValidacao(null); }} 
                   className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-xl p-3.5 text-sm text-zinc-100 outline-none transition-all" 
                 />
               </div>
 
               <div className="grid grid-cols-3 gap-2">
                 <div className="col-span-2">
-                  <label className="text-xs font-black text-orange-400 uppercase block mb-1">Endereço de Entrega</label>
+                  <label className="text-xs font-black text-orange-400 uppercase block mb-1">Endereço de Entrega *</label>
                   <input 
                     type="text" 
                     placeholder="Ex: Rua das Flores" 
                     value={endereco} 
-                    onChange={(e) => setEndereco(e.target.value)} 
+                    onChange={(e) => { setEndereco(e.target.value); setErroValidacao(null); }} 
                     className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-xl p-3.5 text-sm text-zinc-100 outline-none transition-all" 
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-black text-orange-400 uppercase block mb-1">Número</label>
+                  <label className="text-xs font-black text-orange-400 uppercase block mb-1">Número *</label>
                   <input 
-                    type="number"
-                    inputMode="numeric"
+                    type="text"
                     placeholder="123" 
                     value={numeroCasa} 
-                    onChange={(e) => setNumeroCasa(e.target.value)} 
+                    onChange={(e) => { setNumeroCasa(e.target.value); setErroValidacao(null); }} 
                     className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-xl p-3.5 text-sm font-black text-center text-zinc-100 outline-none transition-all" 
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-black text-orange-400 uppercase block mb-1">Ponto de Referência</label>
+                <label className="text-xs font-black text-orange-400 uppercase block mb-1">Ponto de Referência (Opcional)</label>
                 <input 
                   type="text" 
                   placeholder="Ex: Próximo ao mercado" 
@@ -419,28 +528,35 @@ export default function ClientePainel() {
                 />
               </div>
 
-              <div className="text-center pt-1 border-t border-zinc-800/50 mt-2">
-                <label className="text-[10px] font-black text-zinc-500 uppercase block mb-1.5">
-                  🕒 Escolha o horário da entrega
+              <div id="campo-horario" className="text-center pt-3 border-t border-zinc-800/50 rounded-xl p-2">
+                <label className="text-xs font-black text-orange-500 uppercase block mb-2 animate-pulse">
+                  ⚠️ ESCOLHA O HORÁRIO DA ENTREGA ABAIXO *
                 </label>
                 
                 <button
                   type="button"
                   onClick={() => setMostrarListaHorarios(!mostrarListaHorarios)}
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-xl py-3 px-4 flex items-center justify-center relative active:scale-95 transition-all"
+                  className={`w-full bg-zinc-900 rounded-2xl py-4 px-4 flex items-center justify-center relative active:scale-95 transition-all border-4 ${
+                    horario === "0:00" 
+                      ? "border-orange-500 animate-pulse shadow-[0_0_15px_rgba(249,115,22,0.4)]" 
+                      : "border-emerald-500"
+                  }`}
                 >
-                  <span className="text-orange-500 font-black text-xl tracking-wide">{horario}</span>
-                  <span className="text-zinc-600 absolute right-4 text-xs">{mostrarListaHorarios ? "▲" : "▼"}</span>
+                  <span className={`${horario === "0:00" ? "text-orange-400" : "text-emerald-400"} font-black text-2xl tracking-wide`}>
+                    {horario === "0:00" ? "TOQUE AQUI PARA ESCOLHER A HORA" : horario}
+                  </span>
+                  <span className="text-orange-500 absolute right-4 text-xs font-bold">{mostrarListaHorarios ? "▲" : "▼"}</span>
                 </button>
 
                 {mostrarListaHorarios && (
-                  <div className="mt-2 grid grid-cols-4 gap-1.5 max-h-40 overflow-y-auto p-2 bg-zinc-900 border border-orange-500/30 rounded-xl shadow-inner">
+                  <div className="mt-2 grid grid-cols-4 gap-1.5 max-h-40 overflow-y-auto p-2 bg-zinc-900 border-2 border-orange-500 rounded-xl shadow-inner">
                     {OPCOES_HORARIOS.map((hora) => (
                       <button
                         key={hora}
                         type="button"
                         onClick={() => {
                           setHorario(hora)
+                          setErroValidacao(null)
                           setMostrarListaHorarios(false)
                         }}
                         className={`py-3 text-center rounded-lg font-bold text-xs transition-all ${
@@ -481,7 +597,6 @@ export default function ClientePainel() {
               {pagamento === "Pix" && (
                 <div className="space-y-3 pt-2">
                   <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 text-center">
-                    
                     <p className="text-orange-400 font-black text-xs uppercase tracking-wider">
                       Total a pagar no PIX
                     </p>
@@ -489,7 +604,6 @@ export default function ClientePainel() {
                       R$ {valorTotalFinal.toFixed(2)}
                     </p>
                     
-                    {/* BOTÃO ULTRA-ESTÁVEL (NÃO TRAVA E EVITA QUEDA DO SERVIDOR) */}
                     <button
                       type="button"
                       disabled={statusPix === "carregando"}
@@ -497,27 +611,29 @@ export default function ClientePainel() {
                         try {
                           setStatusPix("carregando");
 
-                          // 1. Executa a função assíncrona do payload fora do fluxo do DOM
                           const dadosPix = await gerarPixCopiaECola(valorTotalFinal);
-                          
                           if (!dadosPix || !dadosPix.payload) {
                             throw new Error("Payload inválido");
                           }
 
-                          // 2. Criação estruturada de input para evitar congelamento no mobile
-                          const inputInvisivel = document.createElement("input");
-                          inputInvisivel.value = dadosPix.payload;
-                          inputInvisivel.style.position = "absolute";
-                          inputInvisivel.style.left = "-9999px";
-                          document.body.appendChild(inputInvisivel);
-                          inputInvisivel.select();
-                          inputInvisivel.setSelectionRange(0, 99999);
-                          
-                          document.execCommand("copy");
-                          document.body.removeChild(inputInvisivel);
+                          if (navigator.clipboard && navigator.clipboard.writeText) {
+                            await navigator.clipboard.writeText(dadosPix.payload);
+                          } else {
+                            const inputInvisivel = document.createElement("input");
+                            inputInvisivel.value = dadosPix.payload;
+                            inputInvisivel.style.position = "absolute";
+                            inputInvisivel.style.left = "-9999px";
+                            document.body.appendChild(inputInvisivel);
+                            inputInvisivel.select();
+                            inputInvisivel.setSelectionRange(0, 99999);
+                            document.execCommand("copy");
+                            document.body.removeChild(inputInvisivel);
+                          }
 
                           setStatusPix("copiado");
-                          setTimeout(() => setStatusPix("normal"), 3000);
+                          setMostrarAlertaPix(true);
+                          
+                          setTimeout(() => setStatusPix("normal"), 4000);
 
                         } catch (error) {
                           console.error("Erro no fluxo do PIX:", error);
@@ -532,7 +648,7 @@ export default function ClientePainel() {
                         ${statusPix === "erro" ? "bg-red-600" : ""}
                       `}
                     >
-                      {statusPix === "normal" && "📋 COPIAR PIX AUTOMÁTICO"}
+                      {statusPix === "normal" && "📋 PIX COPIAR E COLAR"}
                       {statusPix === "carregando" && "⌛ GERANDO PIX..."}
                       {statusPix === "copiado" && "✅ COPIADO COM SUCESSO!"}
                       {statusPix === "erro" && "❌ ERRO. CLIQUE PARA TENTAR NOVO"}
@@ -547,7 +663,7 @@ export default function ClientePainel() {
                   <input 
                     type="number"
                     inputMode="decimal"
-                    placeholder="50" 
+                    placeholder="R$: 0.00"
                     value={trocoPara} 
                     onChange={(e) => setTrocoPara(e.target.value)} 
                     className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-400 rounded-xl p-3.5 text-sm text-zinc-100 font-bold outline-none transition-all" 
@@ -570,59 +686,99 @@ export default function ClientePainel() {
       )}
 
       {etapa === "confirmacao" && (
-        <div className="max-w-md mx-auto px-4 mt-6 space-y-5 text-base">
+        <div className="max-w-md mx-auto px-4 mt-6 space-y-5 text-base uppercase">
           <div className="flex items-center gap-2 border-b border-zinc-800 pb-3">
-            <button type="button" onClick={() => setEtapa("checkout")} className="text-zinc-400 hover:text-zinc-200 font-black text-xs bg-zinc-950 border border-zinc-800 px-3 py-2 rounded-xl shadow-sm">← Alterar Dados</button>
-            <h2 className="text-sm font-black uppercase text-orange-500 tracking-wider ml-auto">Conferir Pedido</h2>
+            <button type="button" onClick={() => setEtapa("checkout")} className="text-zinc-400 hover:text-zinc-200 font-black text-xs bg-zinc-950 border border-zinc-800 px-3 py-2 rounded-xl shadow-sm">← ALTERAR DADOS</button>
+            <h2 className="text-sm font-black uppercase text-orange-500 tracking-wider ml-auto">CONFERIR PEDIDO</h2>
           </div>
 
-          <div className="bg-zinc-950 border-2 border-orange-500/60 rounded-[32px] p-6 space-y-5 shadow-2xl">
+          <div className="bg-zinc-950 border-2 border-orange-500/60 rounded-[32px] p-6 space-y-5 shadow-2xl text-center">
             
-            <div className="space-y-3 text-zinc-200 border-b-2 border-zinc-900 pb-4 text-sm leading-relaxed">
-              <p><strong className="text-zinc-500 block text-xs uppercase tracking-wider">Cliente:</strong> <span className="text-zinc-100 font-bold text-base">{nome}</span></p>
-              <p><strong className="text-zinc-500 block text-xs uppercase tracking-wider">Endereço de Entrega:</strong> <span className="text-zinc-100 font-semibold">{endereco.trim() ? `${endereco.trim()}, Nº ${numeroCasa.trim()} ${referencia.trim() ? `(${referencia.trim()})` : ""}` : "Retirada no Balcão"}</span></p>
+            <div className="space-y-3 text-zinc-200 border-b-2 border-zinc-900 pb-4 text-sm leading-relaxed flex flex-col items-center uppercase">
+              <p><strong className="text-zinc-500 block text-xs uppercase tracking-wider">CLIENTE:</strong> <span className="text-zinc-100 font-bold text-base">{nome.toUpperCase()}</span></p>
               
-              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-zinc-900">
+              <div className="w-full text-center">
+                <strong className="text-zinc-500 block text-xs uppercase tracking-wider">ENDEREÇO DE ENTREGA:</strong> 
+                <span className="text-zinc-100 font-semibold text-sm">
+                  {`${endereco.toUpperCase().trim()}, Nº ${numeroCasa.toUpperCase().trim()}`}
+                </span>
+                {referencia.trim() && (
+                  <span className="text-amber-400 font-bold block text-xs mt-1 lowercase first-letter:uppercase bg-zinc-900 px-2 py-1 rounded-lg border border-zinc-800 max-w-xs mx-auto">
+                    📍 Ref: {referencia.toUpperCase().trim()}
+                  </span>
+                )}
+              </div>
+
+              {/* EXIBIÇÃO DA OBSERVAÇÃO NO RESUMO DA TELA DE CONFIRMAÇÃO */}
+              {observacao.trim() && (
+                <div className="w-full text-center bg-zinc-900 px-3 py-2.5 rounded-xl border border-zinc-800 max-w-sm mx-auto mt-1">
+                  <strong className="text-orange-400 block text-[11px] font-black uppercase tracking-wider mb-0.5">📝 Observação do Pedido:</strong>
+                  <span className="text-zinc-300 font-medium normal-case block text-xs px-2 leading-relaxed">
+                    "{observacao.trim()}"
+                  </span>
+                </div>
+              )}
+              
+              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-zinc-900 w-full">
                 <div>
-                  <strong className="text-zinc-500 block text-[10px] uppercase tracking-wider">Horário Marcado:</strong> 
+                  <strong className="text-zinc-500 block text-[10px] uppercase tracking-wider">HORÁRIO MARCADO:</strong> 
                   <span className="text-orange-500 font-black font-mono text-xl block mt-0.5">{horario}</span>
                 </div>
                 <div>
-                  <strong className="text-zinc-500 block text-[10px] uppercase tracking-wider">Forma de Pagamento:</strong> 
-                  <span className="text-zinc-100 font-black uppercase text-sm block mt-1">{pagamento}</span>
+                  <strong className="text-zinc-500 block text-[10px] uppercase tracking-wider">FORMA DE PAGAMENTO:</strong> 
+                  <span className="text-zinc-100 font-black uppercase text-sm block mt-1">{pagamento.toUpperCase()}</span>
                 </div>
               </div>
 
-              {pagamento === "Dinheiro" && trocoCalculado > 0 && (
-                <div className="bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-xl mt-2 text-emerald-400 text-xs font-bold">
-                  Troco para: R$ {parseFloat(trocoPara).toFixed(2)} (Leva R$ {trocoCalculado.toFixed(2)} de troco)
+              {pagamento === "Dinheiro" && (
+                <div className="w-full mt-3 bg-zinc-900 border-2 border-amber-500/50 rounded-2xl p-4 space-y-2 text-center shadow-inner">
+                  <div>
+                    <span className="text-zinc-400 text-[10px] font-black block tracking-widest">VAI PAGAR COM NOTA DE:</span>
+                    <span className="text-amber-400 font-mono font-black text-2xl">
+                      R$ {trocoParaNum > 0 ? trocoParaNum.toFixed(2) : valorTotalFinal.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="border-t border-zinc-800/80 pt-2">
+                    <span className="text-zinc-400 text-[10px] font-black block tracking-widest">VALOR DO SEU TROCO:</span>
+                    <span className="text-emerald-400 font-mono font-black text-3xl block mt-0.5 animate-pulse">
+                      R$ {trocoCalculado.toFixed(2)}
+                    </span>
+                  </div>
                 </div>
               )}
             </div>
 
-            <div className="space-y-2.5">
-              <span className="text-[11px] uppercase font-black text-zinc-500 block tracking-wider">Itens Escolhidos:</span>
+            <div className="space-y-2 flex flex-col items-center uppercase">
+              <span className="text-[11px] uppercase font-black text-zinc-500 block tracking-wider mb-2">
+                ITENS ESCOLHIDOS:
+              </span>
               {Object.entries(itens).map(([chave, qtd]) => {
                 if (qtd === 0) return null
                 const produto = DETALHES_PRODUTOS[chave]
                 const precoUnidade = PRECOS_PRODUTOS[chave]
                 return (
-                  <div key={chave} className="flex justify-between items-center text-zinc-100 text-sm py-0.5">
-                    <span className="font-bold flex items-center gap-2">
-                      <span className="text-base">{produto.icone}</span> 
-                      <span className="text-orange-400 font-black text-base">{qtd}x</span> 
-                      {produto.nome}
-                    </span>
-                    <span className="font-black text-zinc-300 font-mono">R$ {(precoUnidade * qtd).toFixed(2)}</span>
+                  <div 
+                    key={chave} 
+                    className="flex justify-between items-center text-zinc-100 text-sm py-1.5 w-full max-w-sm border-b border-zinc-900/40 last:border-0 px-1"
+                  >
+                    <div className="flex items-center gap-2 text-left">
+                      <span className="text-base select-none">{produto.icone}</span> 
+                      <span className="text-orange-400 font-black text-base">{qtd}X</span> 
+                      <span className="font-bold">{produto.nome.toUpperCase()}</span>
+                    </div>
+                    
+                    <div className="text-right font-black text-zinc-300 font-mono min-w-[75px]">
+                      R$ {(precoUnidade * qtd).toFixed(2)}
+                    </div>
                   </div>
                 )
               })}
             </div>
 
-            <div className="border-t-2 border-zinc-900 pt-4 space-y-2">
+            <div className="border-t-2 border-zinc-900 pt-4 space-y-2 uppercase">
               {descuentoCombo > 0 && (
-                <div className="flex justify-between text-emerald-400 font-black text-xs uppercase bg-emerald-500/5 px-3 py-1.5 rounded-lg border border-emerald-500/10">
-                  <span>Desconto Combo Ativo:</span>
+                <div className="flex justify-between text-emerald-400 font-black text-xs uppercase bg-emerald-500/5 px-3 py-1.5 rounded-lg border border-emerald-500/10 justify-center gap-2">
+                  <span>DESCONTO COMBO ATIVO:</span>
                   <span>- R$ {descuentoCombo.toFixed(2)}</span>
                 </div>
               )}
@@ -637,40 +793,33 @@ export default function ClientePainel() {
             type="button"
             disabled={enviandoPedido}
             onClick={enviarPedidoFinal}
-            className="w-full py-5 px-6 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-lg font-black uppercase tracking-widest rounded-2xl transition-all shadow-xl shadow-emerald-950/40 active:scale-95"
+            className="w-full py-5 px-6 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-zinc-950 text-lg font-black uppercase tracking-widest rounded-2xl transition-all shadow-md active:scale-95"
           >
-            {enviandoPedido ? "Enviando para Cozinha..." : "🚀 ENVIAR PEDIDO AGORA"}
+            {enviandoPedido ? "ENVIANDO PARA COZINHA..." : "🚀 ENVIAR PEDIDO AGORA"}
           </button>
         </div>
       )}
 
+      {/* BARRA INFERIOR */}
       {totalItensSelecionados > 0 && (etapa === "menu" || etapa === "checkout") && (
         <div className="fixed bottom-6 left-4 right-4 z-40 max-w-xl mx-auto">
-          <div className="bg-zinc-950/95 backdrop-blur-md border border-zinc-800 rounded-2xl p-4 flex items-center justify-between shadow-2xl">
+          <div className="bg-zinc-950 border border-zinc-800 shadow-2xl rounded-2xl p-4 flex items-center justify-between">
             <div>
-              <span className="bg-orange-500/20 text-orange-400 font-black text-[10px] px-2 py-0.5 rounded-md uppercase tracking-wider">
-                {totalItensSelecionados} {totalItensSelecionados === 1 ? "Item" : "Itens"}
+              <span className="bg-orange-500/10 text-orange-400 font-black text-[10px] px-2 py-0.5 rounded-md uppercase tracking-wider">
+                {totalItensSelecionados} {totalItensSelecionados === 1 ? "ITEM" : "ITENS"}
               </span>
               <div className="flex items-baseline gap-1 mt-0.5">
                 <span className="text-lg font-black text-emerald-400 tracking-tight">R$ {valorTotalFinal.toFixed(2)}</span>
               </div>
             </div>
 
-            {etapa === "menu" ? (
+            {etapa === "menu" && (
               <button 
                 type="button" 
-                onClick={() => setEtapa("checkout")}
-                className="bg-orange-500 text-white text-xs font-black uppercase tracking-widest px-6 py-3.5 rounded-xl shadow-md transition-all active:scale-95"
+                onClick={() => setEtapa("observacao")} // Trocado aqui para redirecionar para a nova tela de observações
+                className="py-3 px-6 bg-orange-500 text-white text-sm font-black uppercase tracking-widest rounded-xl transition-all shadow-md active:scale-95"
               >
-                Avançar →
-              </button>
-            ) : (
-              <button 
-                type="button" 
-                onClick={() => setEtapa("menu")}
-                className="bg-zinc-900 text-zinc-300 text-xs font-black uppercase tracking-wide px-5 py-3.5 rounded-xl transition-all active:scale-95"
-              >
-                ← Cardápio
+                AVANÇAR →
               </button>
             )}
           </div>
