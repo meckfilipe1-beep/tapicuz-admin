@@ -6,7 +6,7 @@ import { collection, doc, onSnapshot, addDoc } from "firebase/firestore"
 import Image from "next/image"
 import { gerarPixCopiaECola } from "@/lib/pix"
 
-// Ajuste na tipagem das etapas do app
+// Tipagem das etapas do app
 type Etapa = "menu" | "observacao" | "checkout" | "confirmacao" | "sucesso"
 
 // 1. AJUSTE DE PREÇOS (Se a Sueli mudar os valores, é só alterar aqui)
@@ -49,7 +49,7 @@ export default function ClientePainel() {
   const [endereco, setEndereco] = useState("")
   const [numeroCasa, setNumeroCasa] = useState("")
   const [referencia, setReferencia] = useState("")
-  const [observacao, setObservacao] = useState("") // Novo estado para a observação
+  const [observacao, setObservacao] = useState("") 
   const [pagamento, setPagamento] = useState<"Pix" | "Dinheiro">("Pix")
   const [trocoPara, setTrocoPara] = useState("")
   const [horario, setHorario] = useState("0:00")
@@ -132,7 +132,7 @@ export default function ClientePainel() {
   const trocoParaNum = parseFloat(trocoPara.replace(",", ".")) || 0
   const trocoCalculado = pagamento === "Dinheiro" && trocoParaNum > valorTotalFinal ? trocoParaNum - valorTotalFinal : 0
 
-  function irParaConferencia(e: any) {
+  function irParaConferencia(e: React.FormEvent) {
     e.preventDefault()
     setErroValidacao(null)
 
@@ -140,24 +140,28 @@ export default function ClientePainel() {
 
     if (valorTotalFinal === 0) {
       setErroValidacao("Você não adicionou nenhum item ao carrinho.")
+      setEtapa("menu")
       return
     }
     if (!nome.trim()) {
       setErroValidacao("Por favor, preencha o campo: Seu Nome.")
+      document.getElementById("campo-nome")?.scrollIntoView({ behavior: "smooth" })
       return
     }
     if (!endereco.trim()) {
       setErroValidacao("Por favor, preencha o campo: Endereço de Entrega.")
+      document.getElementById("campo-endereco")?.scrollIntoView({ behavior: "smooth" })
       return
     }
     if (!numeroCasa.trim()) {
       setErroValidacao("Por favor, preencha o campo: Número da Casa.")
+      document.getElementById("campo-numero")?.scrollIntoView({ behavior: "smooth" })
       return
     }
     if (horario === "0:00") {
       setErroValidacao("Por favor, escolha um Horário para a sua entrega.")
-      const elementoHora = document.getElementById("campo-horario")
-      if (elementoHora) elementoHora.scrollIntoView({ behavior: "smooth" })
+      setMostrarListaHorarios(true)
+      document.getElementById("campo-horario")?.scrollIntoView({ behavior: "smooth" })
       return
     }
     
@@ -180,7 +184,7 @@ export default function ClientePainel() {
     const payloadPedido = {
       nome: nome.trim(),
       endereco: enderecoCompleto,
-      observacao: observacao.trim(), // Enviando a observação para o banco de dados da Sueli
+      observacao: observacao.trim(),
       pagamento,
       troco: trocoCalculado,
       valorTotal: valorTotalFinal,
@@ -195,7 +199,8 @@ export default function ClientePainel() {
       await addDoc(collection(db, "pedidos"), payloadPedido)
       setEtapa("sucesso")
     } catch (error) {
-      console.error(error)
+      console.error("Erro ao enviar pedido:", error)
+      alert("Houve um erro ao enviar o seu pedido. Por favor, tente novamente.")
     } finally {
       setEnviandoPedido(false)
     }
@@ -213,7 +218,7 @@ export default function ClientePainel() {
       cuscuzMilhoArroz: 0, 
       cafe: 0 
     })
-    setObservacao("") // Limpa o campo de observação para o próximo cliente
+    setObservacao("") 
     setTrocoPara("")
     setHorario("0:00")
     setErroValidacao(null)
@@ -260,11 +265,12 @@ export default function ClientePainel() {
               PEDIDO ENVIADO COM SUCESSO!
             </h2>
             <p className="text-xs text-zinc-400 px-4">
-              Sua encomenda já chegou no nosso sistema e foi direto para a produção!
+              Sua encomenda já chegou no nosso system e foi direto para a produção!
             </p>
           </div>
 
           <button 
+            type="button"
             onClick={reiniciarPainel}
             className="w-full py-3.5 bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 font-black text-xs uppercase tracking-widest rounded-xl shadow-md active:scale-95 transition-all"
           >
@@ -352,7 +358,7 @@ export default function ClientePainel() {
           </div>
 
           <div className="grid grid-cols-1 gap-4">
-            {Object.keys(DETALHES_PRODUTOS).map((chave) => {
+            {Object.keys(PRECOS_PRODUTOS).map((chave) => {
               const produto = DETALHES_PRODUTOS[chave]
               const preco = PRECOS_PRODUTOS[chave]
               const quantidade = itens[chave] || 0
@@ -418,7 +424,7 @@ export default function ClientePainel() {
         </div>
       )}
 
-      {/* NOVA TELA: OBSERVAÇÃO DO PEDIDO */}
+      {/* TELA: OBSERVAÇÃO DO PEDIDO */}
       {etapa === "observacao" && (
         <div className="max-w-md mx-auto px-4 mt-6 space-y-6">
           <div className="flex items-center gap-2 border-b border-zinc-800 pb-3">
@@ -448,7 +454,7 @@ export default function ClientePainel() {
               <button
                 type="button"
                 onClick={() => {
-                  setObservacao(""); // Limpa o campo caso clique em pular
+                  setObservacao(""); 
                   setEtapa("checkout");
                 }}
                 className="w-1/3 py-4 bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 font-black text-xs uppercase tracking-widest rounded-xl transition-all active:scale-95"
@@ -468,6 +474,7 @@ export default function ClientePainel() {
         </div>
       )}
 
+      {/* TELA: FORMULÁRIO CHECKOUT */}
       {etapa === "checkout" && (
         <div className="max-w-md mx-auto px-4 mt-6 space-y-6">
           <div className="flex items-center gap-2 border-b border-zinc-800 pb-3">
@@ -476,14 +483,14 @@ export default function ClientePainel() {
           </div>
 
           {erroValidacao && (
-            <div className="bg-red-500 border border-red-600 text-white p-4 rounded-2xl font-black text-xs uppercase tracking-wider text-center animate-pulse shadow-lg">
+            <div className="bg-red-500/20 border-2 border-red-500 text-red-200 p-4 rounded-2xl font-black text-xs uppercase tracking-wider text-center shadow-lg">
               ⚠️ {erroValidacao}
             </div>
           )}
 
           <form onSubmit={irParaConferencia} className="space-y-3 text-[11px]" noValidate>
             <div className="bg-zinc-950 border border-zinc-800/80 p-4 rounded-2xl space-y-3 shadow-md">
-              <div>
+              <div id="campo-nome">
                 <label className="text-xs font-black text-orange-400 uppercase block mb-1">Seu Nome *</label>
                 <input 
                   type="text" 
@@ -495,7 +502,7 @@ export default function ClientePainel() {
               </div>
 
               <div className="grid grid-cols-3 gap-2">
-                <div className="col-span-2">
+                <div id="campo-endereco" className="col-span-2">
                   <label className="text-xs font-black text-orange-400 uppercase block mb-1">Endereço de Entrega *</label>
                   <input 
                     type="text" 
@@ -505,7 +512,7 @@ export default function ClientePainel() {
                     className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-xl p-3.5 text-sm text-zinc-100 outline-none transition-all" 
                   />
                 </div>
-                <div>
+                <div id="campo-numero">
                   <label className="text-xs font-black text-orange-400 uppercase block mb-1">Número *</label>
                   <input 
                     type="text"
@@ -677,7 +684,7 @@ export default function ClientePainel() {
 
             <button 
               type="submit" 
-              className="w-full py-4 bg-orange-500 text-white text-base font-black uppercase tracking-widest rounded-xl transition-all shadow-md active:scale-95"
+              className="w-full py-4 bg-orange-500 text-white text-base font-black uppercase tracking-widest rounded-xl transition-all shadow-md active:scale-95 text-center block"
             >
               Conferir Pedido →
             </button>
@@ -685,6 +692,7 @@ export default function ClientePainel() {
         </div>
       )}
 
+      {/* TELA DE CONFIRMAÇÃO */}
       {etapa === "confirmacao" && (
         <div className="max-w-md mx-auto px-4 mt-6 space-y-5 text-base uppercase">
           <div className="flex items-center gap-2 border-b border-zinc-800 pb-3">
@@ -709,7 +717,6 @@ export default function ClientePainel() {
                 )}
               </div>
 
-              {/* EXIBIÇÃO DA OBSERVAÇÃO NO RESUMO DA TELA DE CONFIRMAÇÃO */}
               {observacao.trim() && (
                 <div className="w-full text-center bg-zinc-900 px-3 py-2.5 rounded-xl border border-zinc-800 max-w-sm mx-auto mt-1">
                   <strong className="text-orange-400 block text-[11px] font-black uppercase tracking-wider mb-0.5">📝 Observação do Pedido:</strong>
@@ -816,7 +823,7 @@ export default function ClientePainel() {
             {etapa === "menu" && (
               <button 
                 type="button" 
-                onClick={() => setEtapa("observacao")} // Trocado aqui para redirecionar para a nova tela de observações
+                onClick={() => setEtapa("observacao")} 
                 className="py-3 px-6 bg-orange-500 text-white text-sm font-black uppercase tracking-widest rounded-xl transition-all shadow-md active:scale-95"
               >
                 AVANÇAR →
