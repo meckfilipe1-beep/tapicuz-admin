@@ -611,10 +611,14 @@ export default function ClientePainel() {
                       R$ {valorTotalFinal.toFixed(2)}
                     </p>
                     
+                    {/* ATENÇÃO: ADICIONADO TYPE="BUTTON" E EVENTO DE PREVENT DEFAULT COMPLETO */}
                     <button
                       type="button"
                       disabled={statusPix === "carregando"}
-                      onClick={async () => {
+                      onClick={async (e) => {
+                        e.preventDefault(); // Trava completamente o envio do formulário involuntário
+                        e.stopPropagation();
+                        
                         try {
                           setStatusPix("carregando");
 
