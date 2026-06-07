@@ -9,6 +9,30 @@ import { gerarPixCopiaECola } from "@/lib/pix"
 // Tipagem das etapas do app
 type Etapa = "menu" | "observacao" | "checkout" | "confirmacao" | "sucesso"
 
+// LISTA DE VERSÍCULOS VARIADOS PARA O CLIENTE
+const VERSICULOS_BENCÃO = [
+  "O Senhor te abençoe e te guarde; o Senhor faça resplandecer o seu rosto sobre ti. (Números 6:24-25)",
+  "O Senhor é o meu pastor; nada me faltará. (Salmo 23:1)",
+  "Consagre ao Senhor tudo o que você faz, e os seus planos serão bem-sucedidos. (Provérbios 16:3)",
+  "Abençoado será você ao entrar e abençoado será ao sair. (Deuteronômio 28:6)",
+  "Este é o dia que o Senhor fez; exultemos e alegremo-nos nele. (Salmo 118:24)",
+  "Deem graças ao Senhor, porque ele é bom; o seu amor dura para sempre. (Salmo 107:1)",
+  "O meu Deus suprirá todas as necessidades de vocês, de acordo com as suas gloriosas richesas. (Filipenses 4:19)",
+  "Aquietai-vos e sabei que eu sou Deus. (Salmo 46:10)",
+  "Se Deus é por nós, quem será contra nós? (Romanos 8:31)",
+  "Tudo posso naquele que me fortalece. (Filipenses 4:13)",
+  "O Senhor é a minha luz e a minha salvação; de quem terei temor? (Salmo 27:1)",
+  "Mil poderão cair ao teu lado, e dez mil à tua direita, mas tu não serás atingido. (Salmo 91:7)",
+  "Guarda-me como à pupila dos olhos, esconde-me à sombra das tuas asas. (Salmo 17:8)",
+  "Porque para Deus nada é impossível. (Lucas 1:37)",
+  "Lancem sobre ele toda a sua ansiedade, porque ele tem cuidado de vocês. (1 Pedro 5:7)",
+  "Sejam fortes e corajosos. Não tenham medo (...) pois o Senhor, o seu Deus, vai com vocês. (Deuteronômio 31:6)",
+  "Grande é a sua fidelidade; as suas misericórdias renovam-se cada manhã. (Lamentações 3:22-23)",
+  "A paz de Deus, que excede todo o entendimento, guardará o coração de vocês. (Filipenses 4:7)",
+  "Fui moço e agora sou velho; mas nunca vi desamparado o justo, nem a sua descendência a mendigar o pão. (Salmo 37:25)",
+  "O Senhor guiará você continuamente e fartará a sua alma até em lugares áridos. (Isaías 58:11)"
+]
+
 // 1. AJUSTE DE PREÇOS (Se a Sueli mudar os valores, é só alterar aqui)
 const PRECOS_PRODUTOS: { [key: string]: number } = {
   tapiocaMolhada: 8.00,
@@ -58,6 +82,8 @@ export default function ClientePainel() {
   const [statusPix, setStatusPix] = useState<"normal" | "carregando" | "copiado" | "erro">("normal")
   const [mostrarAlertaPix, setMostrarAlertaPix] = useState(false)
   const [erroValidacao, setErroValidacao] = useState<string | null>(null)
+  
+  const [versiculoEscolhido, setVersiculoEscolhido] = useState("")
 
   const [itens, setItens] = useState<{ [key: string]: number }>({
     tapiocaMolhada: 0,
@@ -197,6 +223,10 @@ export default function ClientePainel() {
 
     try {
       await addDoc(collection(db, "pedidos"), payloadPedido)
+      
+      const indiceAleatorio = Math.floor(Math.random() * VERSICULOS_BENCÃO.length)
+      setVersiculoEscolhido(VERSICULOS_BENCÃO[indiceAleatorio])
+      
       setEtapa("sucesso")
     } catch (error) {
       console.error("Erro ao enviar pedido:", error)
@@ -222,6 +252,7 @@ export default function ClientePainel() {
     setTrocoPara("")
     setHorario("0:00")
     setErroValidacao(null)
+    setVersiculoEscolhido("")
     setEtapa("menu")
   }
 
@@ -238,7 +269,7 @@ export default function ClientePainel() {
       <div className="min-h-screen bg-zinc-900 flex flex-col items-center justify-center px-4 text-center">
         <div className="text-center mb-8 select-none">
           <h1 className="text-3xl font-black text-orange-500 tracking-widest uppercase">TAPICUZ</h1>
-          <p className="text-xs font-bold text-amber-500/80 tracking-widest uppercase mt-0.5">Cardápio</p>
+          <p className="text-xs font-bold text-amber-500/80 tracking-widest uppercase mt-0.5">DA SUELI</p>
         </div>
         <div className="max-w-md w-full bg-zinc-950 border border-zinc-800 p-8 rounded-3xl shadow-2xl space-y-4">
           <div className="text-4xl animate-pulse">🌙</div>
@@ -256,7 +287,7 @@ export default function ClientePainel() {
   if (etapa === "sucesso") {
     return (
       <div className="min-h-screen bg-zinc-900 flex flex-col items-center justify-center px-4 text-center">
-        <div className="max-w-md w-full bg-zinc-950 border border-zinc-800 rounded-3xl p-8 shadow-2xl space-y-6">
+        <div className="max-w-md w-full bg-zinc-950 border-2 border-zinc-800 rounded-3xl p-8 shadow-2xl space-y-6">
           <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center text-3xl mx-auto shadow-inner animate-bounce">
             ✓
           </div>
@@ -269,12 +300,24 @@ export default function ClientePainel() {
             </p>
           </div>
 
+          {/* ESPAÇO DO VERSÍCULO - MÁXIMA NITIDEZ */}
+          {versiculoEscolhido && (
+            <div className="border-2 border-amber-500/30 py-5 my-2 space-y-3 bg-zinc-900 rounded-2xl p-5 shadow-inner">
+              <span className="text-xs font-black text-amber-400 tracking-widest block uppercase">
+                📖 UMA PALAVRA PARA O SEU DIA:
+              </span>
+              <p className="text-base text-white font-bold leading-relaxed px-1">
+                "{versiculoEscolhido}"
+              </p>
+            </div>
+          )}
+
           <button 
             type="button"
             onClick={reiniciarPainel}
-            className="w-full py-3.5 bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 font-black text-xs uppercase tracking-widest rounded-xl shadow-md active:scale-95 transition-all"
+            className="w-full py-4 bg-orange-500 hover:bg-orange-400 text-zinc-950 font-black text-sm uppercase tracking-widest rounded-xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
           >
-            VOLTAR PARA O INÍCIO
+            AMÉM 🙏
           </button>
         </div>
       </div>
@@ -319,11 +362,12 @@ export default function ClientePainel() {
         </div>
       )}
 
+      {/* CABEÇALHO ATUALIZADO EXCLUSIVAMENTE COM "DA SUELI" */}
       <header className="sticky top-0 z-40 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800/60 px-4 py-4 shadow-md">
         <div className="max-w-2xl mx-auto flex items-center justify-center relative">
           <div className="text-center select-none">
             <h1 className="text-2xl font-black text-orange-500 tracking-widest uppercase">TAPICUZ</h1>
-            <p className="text-xs font-bold text-amber-500/80 tracking-[0.2em] uppercase mt-0.5">Cardápio</p>
+            <p className="text-xs font-bold text-amber-500/80 tracking-[0.2em] uppercase mt-0.5">DA SUELI</p>
           </div>
           <div className="absolute right-0 px-2.5 py-1 rounded-full border text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5 bg-emerald-500/10 border-emerald-500/20 text-emerald-400 shadow-sm">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
@@ -367,7 +411,7 @@ export default function ClientePainel() {
               return (
                 <div 
                   key={chave} 
-                  className={`border rounded-3xl p-6 flex flex-col items-center gap-5 transition-all bg-zinc-950 ${quantidade > 0 ? "border-orange-500/50 bg-orange-950/10 shadow-lg" : "border-zinc-800/80"}`}
+                  className={`border rounded-3xl p-6 flex flex-col items-center gap-5 transition-all bg-stone-100 ${quantidade > 0 ? "border-orange-500 border-2 shadow-xl ring-4 ring-orange-500/10" : "border-stone-200/90 shadow-sm"}`}
                 >
                   <div className="w-full flex justify-center mb-3">
                     <Image
@@ -385,34 +429,34 @@ export default function ClientePainel() {
                       alt={produto.nome}
                       width={112}
                       height={112}
-                      className="w-28 h-28 object-cover aspect-square rounded-2xl border-2 border-zinc-800 shadow-md"
+                      className="w-28 h-28 object-cover aspect-square rounded-2xl border-2 border-stone-200 shadow-md"
                       loading={ehPrimeiroItem ? "eager" : "lazy"}
                       priority={ehPrimeiroItem}
                     />
                   </div>
 
                   <div className="text-center">
-                    <h3 className="font-bold text-zinc-100 text-xl tracking-wide uppercase">{produto.nome}</h3>
-                    <span className="text-emerald-400 font-black text-lg block mt-1">R$ {preco.toFixed(2)}</span>
+                    <h3 className="font-black text-orange-600 text-xl tracking-wide uppercase">{produto.nome}</h3>
+                    <span className="text-emerald-600 font-black text-lg block mt-1">R$ {preco.toFixed(2)}</span>
                   </div>
 
-                  <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-2xl p-1.5 gap-2 w-full max-w-[200px] justify-center">
+                  <div className="flex items-center bg-stone-200/60 border border-stone-300 rounded-2xl p-1.5 gap-2 w-full max-w-[200px] justify-center">
                     {quantidade > 0 && (
                       <>
                         <button 
                           type="button" 
                           onClick={() => alterarQtd(chave, -1)} 
-                          className="w-12 h-12 rounded-xl bg-zinc-950 text-zinc-400 hover:text-zinc-200 shadow-sm active:scale-90 font-black text-lg transition-all"
+                          className="w-12 h-12 rounded-xl bg-stone-50 text-stone-600 border border-stone-300 shadow-sm active:scale-90 font-black text-lg transition-all"
                         >
                           -
                         </button>
-                        <span className="font-black text-zinc-200 text-xl w-10 text-center">{quantidade}</span>
+                        <span className="font-black text-stone-800 text-xl w-10 text-center">{quantidade}</span>
                       </>
                     )}
                     <button 
                       type="button" 
                       onClick={() => alterarQtd(chave, 1)} 
-                      className={`h-12 rounded-xl font-black transition-all active:scale-95 flex items-center justify-center ${quantidade > 0 ? "w-12 bg-orange-500 text-white text-lg" : "w-full px-6 bg-zinc-950 text-zinc-300 border border-zinc-800 text-sm uppercase tracking-widest"}`}
+                      className={`h-12 rounded-xl font-black transition-all active:scale-95 flex items-center justify-center ${quantidade > 0 ? "w-12 bg-orange-500 text-white text-lg" : "w-full px-6 bg-stone-50 text-stone-700 border border-stone-300 text-sm uppercase tracking-widest"}`}
                     >
                       {quantidade > 0 ? "+" : "Adicionar"}
                     </button>
@@ -432,21 +476,28 @@ export default function ClientePainel() {
             <h2 className="text-xs font-black uppercase text-orange-500 tracking-wider ml-auto">Preferências</h2>
           </div>
 
-          <div className="bg-zinc-950 border border-zinc-800/80 p-6 rounded-3xl space-y-4 shadow-md">
-            <h2 className="text-lg font-black text-zinc-100 uppercase tracking-wide">
+          <div className="bg-zinc-950 border border-zinc-800/80 p-6 rounded-3xl space-y-5 shadow-md text-center">
+            <h2 className="text-xl font-black text-zinc-100 uppercase tracking-wide block w-full text-center">
               Observações do Pedido
             </h2>
 
-            <p className="text-xs text-zinc-400 leading-relaxed">
-              Deseja mudar algo na sua comida? <br />
-              <span className="text-orange-400/90 font-medium">Ex: Sem coco ralado, pouca manteiga, mais leite de coco, café sem açúcar...</span>
-            </p>
+            <div className="bg-zinc-900/60 border border-zinc-800/60 p-4 rounded-2xl text-center space-y-2">
+              <p className="text-sm font-bold text-orange-400 tracking-wide uppercase">
+                💡 Quer deixar seu prato do seu jeito?
+              </p>
+              <p className="text-xs text-zinc-300 leading-relaxed px-2">
+                Use o space abaixo para avisar a Sueli sobre suas preferências! <br />
+                <span className="text-zinc-500 block mt-1.5 font-medium normal-case">
+                  Exemplos: "Sem coco ralado", "Bem quentinho", "Pouca manteiga", "Café sem açúcar", "Leite morno".
+                </span>
+              </p>
+            </div>
 
             <textarea
               value={observacao}
               onChange={(e) => setObservacao(e.target.value)}
-              placeholder="Digite aqui como você quer o seu pedido..."
-              className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-2xl p-4 text-sm text-zinc-100 outline-none transition-all resize-none font-medium placeholder:text-zinc-600"
+              placeholder="Digite aqui como você deseja o seu pedido..."
+              className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-2xl p-4 text-sm text-center text-zinc-100 outline-none transition-all desert-none resize-none font-medium placeholder:text-zinc-600 focus:placeholder:opacity-0"
               rows={4}
             />
 
@@ -516,6 +567,8 @@ export default function ClientePainel() {
                   <label className="text-xs font-black text-orange-400 uppercase block mb-1">Número *</label>
                   <input 
                     type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     placeholder="123" 
                     value={numeroCasa} 
                     onChange={(e) => { setNumeroCasa(e.target.value); setErroValidacao(null); }} 
@@ -611,12 +664,11 @@ export default function ClientePainel() {
                       R$ {valorTotalFinal.toFixed(2)}
                     </p>
                     
-                    {/* ATENÇÃO: ADICIONADO TYPE="BUTTON" E EVENTO DE PREVENT DEFAULT COMPLETO */}
                     <button
                       type="button"
                       disabled={statusPix === "carregando"}
                       onClick={async (e) => {
-                        e.preventDefault(); // Trava completamente o envio do formulário involuntário
+                        e.preventDefault(); 
                         e.stopPropagation();
                         
                         try {
@@ -673,15 +725,16 @@ export default function ClientePainel() {
                 <div className="space-y-1 pt-0.5">
                   <label className="text-xs font-black text-orange-400 uppercase block mb-1">Precisa de troco para quanto?</label>
                   <input 
-                    type="number"
-                    inputMode="decimal"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     placeholder="R$: 0.00"
                     value={trocoPara} 
                     onChange={(e) => setTrocoPara(e.target.value)} 
-                    className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-400 rounded-xl p-3.5 text-sm text-zinc-100 font-bold outline-none transition-all" 
+                    className="w-full bg-zinc-900 border border-zinc-800 focus:border-orange-400 rounded-xl p-3.5 text-sm text-center text-zinc-100 font-bold outline-none transition-all" 
                   />
                   {trocoCalculado > 0 && (
-                    <p className="text-xs text-emerald-400 font-bold pt-0.5">Seu troco será de: R$ {trocoCalculado.toFixed(2)}</p>
+                    <p className="text-xs text-center text-emerald-400 font-bold pt-0.5">Seu troco será de: R$ {trocoCalculado.toFixed(2)}</p>
                   )}
                 </div>
               )}
@@ -815,13 +868,15 @@ export default function ClientePainel() {
       {/* BARRA INFERIOR */}
       {totalItensSelecionados > 0 && (etapa === "menu" || etapa === "checkout") && (
         <div className="fixed bottom-6 left-4 right-4 z-40 max-w-xl mx-auto">
-          <div className="bg-zinc-950 border border-zinc-800 shadow-2xl rounded-2xl p-4 flex items-center justify-between">
-            <div>
-              <span className="bg-orange-500/10 text-orange-400 font-black text-[10px] px-2 py-0.5 rounded-md uppercase tracking-wider">
-                {totalItensSelecionados} {totalItensSelecionados === 1 ? "ITEM" : "ITENS"}
+          <div className="bg-zinc-950 border border-zinc-800 shadow-2xl rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-center">
+            <div className="flex flex-col items-center justify-center w-full sm:w-auto">
+              <span className="bg-orange-500/10 text-orange-400 font-black text-[10px] px-2 py-0.5 rounded-md uppercase tracking-wider block mx-auto">
+                {totalItensSelecionados} {totalItensSelecionados === 1 ? "ITEM SELECIONADO" : "ITENS SELECIONADOS"}
               </span>
-              <div className="flex items-baseline gap-1 mt-0.5">
-                <span className="text-lg font-black text-emerald-400 tracking-tight">R$ {valorTotalFinal.toFixed(2)}</span>
+              <div className="flex items-baseline justify-center gap-1 mt-1 w-full">
+                <span className="text-lg font-black text-emerald-400 tracking-tight text-center block w-full">
+                  Total: R$ {valorTotalFinal.toFixed(2)}
+                </span>
               </div>
             </div>
 
@@ -829,7 +884,7 @@ export default function ClientePainel() {
               <button 
                 type="button" 
                 onClick={() => setEtapa("observacao")} 
-                className="py-3 px-6 bg-orange-500 text-white text-sm font-black uppercase tracking-widest rounded-xl transition-all shadow-md active:scale-95"
+                className="py-3 px-8 w-full sm:w-auto bg-orange-500 text-white text-sm font-black uppercase tracking-widest rounded-xl transition-all shadow-md active:scale-95"
               >
                 AVANÇAR →
               </button>
